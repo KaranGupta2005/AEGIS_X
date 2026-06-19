@@ -1,11 +1,3 @@
-"""
-AEGIS-X Phase 2A: Serializer Tests
-====================================
-Verifies that the BehavioralSerializer produces semantically meaningful
-descriptions for each attack scenario, enabling MiniLM to differentiate
-between normal, takeover, coercion, and malware behavioral patterns.
-"""
-
 from backend.services.feature_engineering import FeatureEngineer
 from backend.services.serializer import BehavioralSerializer
 
