@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+.env
+data/raw/
+models/*.pkl
+embeddings/
+.idea/
+.vscode/
