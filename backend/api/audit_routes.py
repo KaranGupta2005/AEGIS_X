@@ -1,10 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from backend.api.dependencies import get_processor
-from backend.services.explanation_service import ExplainabilityService, NarrativeGenerator
 
 router = APIRouter(prefix="/api/v1/audit", tags=["Audit & Explainability"])
-
-_explainability = ExplainabilityService()
 
 
 @router.post("/explain")
@@ -20,7 +17,9 @@ def generate_explanation(
     entropy: float = 0.0,
     decision: str = "ALLOW",
 ):
-    return _explainability.explain(
+    from backend.services.explanation_service import ExplainabilityService
+    service = ExplainabilityService()
+    return service.explain(
         trust_score=trust_score,
         similarity=similarity,
         cognitive_state=cognitive_state,
@@ -44,6 +43,7 @@ def get_session_summary(user_id: str):
     if not timeline:
         raise HTTPException(status_code=404, detail="No data yet")
 
+    from backend.services.explanation_service import NarrativeGenerator
     summary = NarrativeGenerator.executive_summary(
         user_id=user_id,
         session_duration_seconds=len(timeline) * 2.0,

@@ -5,7 +5,6 @@ from typing import Optional
 import json
 
 from backend.websocket.socket_manager import ConnectionManager
-from backend.services.event_processor import EventProcessor
 from backend.api.dependencies import get_processor, set_processor
 
 
@@ -15,6 +14,7 @@ connection_manager = ConnectionManager()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("[AEGIS-X] Initializing trust engine...")
+    from backend.services.event_processor import EventProcessor
     processor = EventProcessor()
     set_processor(processor)
     print("[AEGIS-X] Trust engine ready.")
