@@ -84,8 +84,14 @@ function generateAIResponse(query: string, state: any): Message {
     cards.push({
       title: 'Session Summary',
       icon: 'shield',
-      content: `Current trust: ${state.trustScore.toFixed(0)}% | Decision: ${state.decision} | State: ${state.cognitiveState.toUpperCase()} | Similarity: ${(state.similarity * 100).toFixed(1)}% | Events: ${state.eventCount}. Try asking: "Why did trust drop?", "What's the fraud probability?", "Analyze cognitive state"`,
-      severity: 'LOW',
+      content: `Current trust: ${state.trustScore.toFixed(0)}% | Decision: ${state.decision} | State: ${state.cognitiveState.toUpperCase()} | Similarity: ${(state.similarity * 100).toFixed(1)}% | Events: ${state.eventCount}. Velocity: ${state.velocity.toFixed(4)} | Entropy: ${state.entropy.toFixed(3)}.`,
+      severity: state.trustScore > 85 ? 'LOW' : state.trustScore > 60 ? 'MEDIUM' : 'HIGH',
+      factors: [
+        { label: 'Trust Score', value: Math.round(state.trustScore), color: state.trustScore > 85 ? '#10B981' : '#F59E0B' },
+        { label: 'Similarity', value: Math.round(state.similarity * 100), color: '#3B82F6' },
+        { label: 'Stability', value: Math.round(state.cognitiveStability * 100), color: '#8B5CF6' },
+        { label: 'Events', value: Math.min(state.eventCount, 100), color: '#10B981' },
+      ],
     })
   }
 
@@ -156,10 +162,12 @@ const AICardComponent: React.FC<{ card: AICard }> = ({ card }) => {
 
 const TrustTimeline: React.FC = () => {
   const { state } = useStore()
-  const { timeline, trustScore, isConnected, velocity, similarity, cognitiveState, driftDetected, entropy } = state
+  const { timeline, trustScore, isConnected, velocity, similarity, cognitiveState, cognitiveStability = 1, driftDetected, driftSeverity = 'none', entropy, anomalyScore = 0, fraudProbability = 0, intentVector = { coercion_probability: 0, takeover_probability: 0, anomaly_severity: 0, robotic_probability: 0 }, decision = 'ALLOW' } = state
 
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
+  const [activeTab, setActiveTab] = useState<'copilot' | 'insights' | 'quality'>('copilot')
+  const [isProcessing, setIsProcessing] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
@@ -167,32 +175,55 @@ const TrustTimeline: React.FC = () => {
   const handleSend = () => {
     if (!input.trim()) return
     const userMsg: Message = { id: `user_${Date.now()}`, role: 'user', content: input }
-    const aiMsg = generateAIResponse(input, state)
-    setMessages(prev => [...prev, userMsg, aiMsg])
+    setMessages(prev => [...prev, userMsg])
     setInput('')
+    setIsProcessing(true)
+    setTimeout(() => {
+      const aiMsg = generateAIResponse(input, state)
+      setMessages(prev => [...prev, aiMsg])
+      setIsProcessing(false)
+    }, 600)
   }
 
   const data = timeline.map(t => t.trust)
   const trustColor = trustScore > 85 ? '#10B981' : trustScore > 60 ? '#F59E0B' : '#EF4444'
 
   const chartOptions: Highcharts.Options = {
-    chart: { type: 'areaspline', backgroundColor: 'transparent', height: 280, margin: [10, 10, 30, 40] },
+    chart: { type: 'area', backgroundColor: 'transparent', height: 280, margin: [10, 10, 30, 40] },
     title: undefined,
     xAxis: { visible: false },
     yAxis: {
       title: { text: '' }, min: 0, max: 100,
       gridLineColor: 'rgba(255,255,255,0.03)',
       labels: { style: { color: '#64748B', fontSize: '9px' } },
+      plotBands: [
+        { from: 85, to: 100, color: 'rgba(16,185,129,0.03)' } as any,
+        { from: 60, to: 85, color: 'rgba(245,158,11,0.02)' } as any,
+        { from: 0, to: 60, color: 'rgba(239,68,68,0.02)' } as any,
+      ],
       plotLines: [
-        { value: 85, color: 'rgba(16,185,129,0.3)', width: 1, dashStyle: 'ShortDash' as any, label: { text: 'ALLOW', style: { color: '#10B981', fontSize: '8px' }, align: 'right' as any } },
-        { value: 60, color: 'rgba(239,68,68,0.3)', width: 1, dashStyle: 'ShortDash' as any, label: { text: 'BLOCK', style: { color: '#EF4444', fontSize: '8px' }, align: 'right' as any } },
+        { value: 85, color: 'rgba(16,185,129,0.4)', width: 1, dashStyle: 'ShortDash' as any, label: { text: 'ALLOW', style: { color: '#10B981', fontSize: '8px' }, align: 'right' as any } },
+        { value: 60, color: 'rgba(239,68,68,0.4)', width: 1, dashStyle: 'ShortDash' as any, label: { text: 'BLOCK', style: { color: '#EF4444', fontSize: '8px' }, align: 'right' as any } },
       ],
     },
     legend: { enabled: false },
     credits: { enabled: false },
     tooltip: { backgroundColor: '#1E293B', borderColor: '#334155', style: { color: '#E2E8F0', fontSize: '10px' }, valueSuffix: '%' },
-    plotOptions: { areaspline: { fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, `${trustColor}25`], [1, `${trustColor}00`]] as any }, marker: { enabled: false }, lineWidth: 2.5, animation: { duration: 1000 } } },
-    series: [{ type: 'areaspline' as any, name: 'Trust Score', data, color: trustColor }],
+    plotOptions: {
+      area: {
+        fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, `${trustColor}30`], [1, `${trustColor}00`]] as any },
+        marker: { enabled: false, states: { hover: { enabled: true, radius: 4 } } },
+        lineWidth: 2.5,
+        threshold: null as any,
+        zones: [
+          { value: 60, color: '#EF4444', fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(239,68,68,0.2)'], [1, 'rgba(239,68,68,0)']] } },
+          { value: 85, color: '#F59E0B', fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(245,158,11,0.15)'], [1, 'rgba(245,158,11,0)']] } },
+          { color: '#10B981', fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(16,185,129,0.2)'], [1, 'rgba(16,185,129,0)']] } },
+        ] as any,
+        animation: { duration: 1000 },
+      },
+    },
+    series: [{ type: 'area' as any, name: 'Trust Score', data }],
   }
 
   return (
@@ -235,76 +266,215 @@ const TrustTimeline: React.FC = () => {
 
       {/* Right: AI Copilot */}
       <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderRadius: 14, border: '1px solid var(--border-light)', overflow: 'hidden' }}>
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-light)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Brain size={16} color="#8B5CF6" />
-            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-main)', fontFamily: 'Space Grotesk' }}>AI Investigator</span>
+        {/* Header + Tabs */}
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-light)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#10B981', boxShadow: '0 0 6px rgba(16,185,129,0.5)' }} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-main)', fontFamily: 'Space Grotesk' }}>AI Risk Copilot</span>
+            <span style={{ marginLeft: 'auto', fontSize: 10, color: '#8B5CF6', background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '2px 7px', borderRadius: 10, fontFamily: 'JetBrains Mono' }}>
+              Trust: {trustScore.toFixed(0)}/100
+            </span>
           </div>
-          <p style={{ fontSize: 9, color: 'var(--text-muted)', margin: '3px 0 0', fontFamily: 'JetBrains Mono' }}>Session #{state.userId?.slice(0, 8) || 'demo'} · Reasoning Workspace</p>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {(['copilot', 'insights', 'quality'] as const).map(tab => (
+              <button key={tab} onClick={() => setActiveTab(tab)}
+                style={{ flex: 1, padding: '6px 4px', borderRadius: 6, border: 'none', background: activeTab === tab ? 'rgba(139,92,246,0.1)' : 'transparent', color: activeTab === tab ? '#8B5CF6' : 'var(--text-muted)', cursor: 'pointer', fontSize: 11, fontFamily: 'JetBrains Mono', fontWeight: activeTab === tab ? 600 : 400, textTransform: 'capitalize', transition: 'all 0.15s' }}>
+                {tab}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Chat Messages */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px' }}>
-          {messages.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-              <Brain size={28} color="var(--text-muted)" style={{ margin: '0 auto 10px', opacity: 0.3 }} />
-              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 12px' }}>Ask about trust changes, cognitive state, fraud probability, or drift detection.</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {['Why did trust drop?', 'Analyze cognitive state', "What's the fraud probability?"].map(q => (
-                  <button key={q} onClick={() => { setInput(q); setTimeout(handleSend, 50) }} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--text-sub)', fontSize: 10, cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(139,92,246,0.3)'; e.currentTarget.style.color = '#8B5CF6' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-light)'; e.currentTarget.style.color = 'var(--text-sub)' }}>
-                    {q}
-                  </button>
+        {/* Tab Content */}
+        <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+          {activeTab === 'copilot' && (
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <div style={{ flex: 1, overflow: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {messages.length === 0 && (
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                    style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-light)', borderRadius: 10, padding: 13, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 7 }}>
+                      <Zap size={12} color="#8B5CF6" />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', fontFamily: 'Space Grotesk' }}>Copilot Ready</span>
+                      <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 600, color: '#10B981', background: 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: 4, fontFamily: 'JetBrains Mono' }}>High · {trustScore.toFixed(0)}/100</span>
+                    </div>
+                    <p style={{ margin: '0 0 9px', fontSize: 12, color: 'var(--text-sub)', lineHeight: 1.6 }}>
+                      <strong>Impact:</strong> Ask any question about the current session — trust changes, cognitive state, fraud probability, or drift detection.
+                    </p>
+                    <div style={{ background: 'var(--bg-page)', padding: '9px 11px', borderRadius: 6, borderLeft: '2px solid #8B5CF6' }}>
+                      <p style={{ margin: 0, fontSize: 11, color: 'var(--text-main)', lineHeight: 1.5 }}>
+                        <strong style={{ color: '#8B5CF6' }}>Action:</strong> Try the quick chips below or type a question like "Why did trust drop?"
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+                {messages.map(msg => (
+                  <div key={msg.id}>
+                    {msg.role === 'user' ? (
+                      <div style={{ alignSelf: 'flex-end', background: 'var(--text-main)', color: 'var(--bg-page)', padding: '9px 13px', borderRadius: '10px 10px 2px 10px', fontSize: 12, maxWidth: '88%', fontFamily: 'JetBrains Mono', lineHeight: 1.5, marginLeft: 'auto' }}>
+                        &gt; {msg.content}
+                      </div>
+                    ) : (
+                      <div>
+                        {msg.cards?.map((card, i) => (
+                          <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                            style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-light)', borderRadius: 10, padding: 13, marginBottom: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 7 }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', fontFamily: 'Space Grotesk', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <Zap size={12} color="#8B5CF6" /> {card.title}
+                              </span>
+                              {card.severity && (
+                                <span style={{ fontSize: 10, fontWeight: 600, color: card.severity === 'CRITICAL' || card.severity === 'HIGH' ? '#EF4444' : card.severity === 'MEDIUM' ? '#F59E0B' : '#10B981', background: card.severity === 'CRITICAL' || card.severity === 'HIGH' ? 'rgba(239,68,68,0.1)' : card.severity === 'MEDIUM' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: 4, fontFamily: 'JetBrains Mono', flexShrink: 0 }}>
+                                  {card.severity}
+                                </span>
+                              )}
+                            </div>
+                            {card.factors && (
+                              <div style={{ marginBottom: 10 }}>
+                                {card.factors.map(f => (
+                                  <div key={f.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                    <span style={{ fontSize: 9, color: 'var(--text-sub)', width: 100, flexShrink: 0 }}>{f.label}</span>
+                                    <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 99, overflow: 'hidden' }}>
+                                      <div style={{ height: '100%', width: `${f.value}%`, background: f.color, borderRadius: 99 }} />
+                                    </div>
+                                    <span style={{ fontSize: 10, fontWeight: 700, color: f.color, width: 28, textAlign: 'right', fontFamily: 'Space Grotesk' }}>{f.value}%</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <p style={{ margin: '0 0 9px', fontSize: 12, color: 'var(--text-sub)', lineHeight: 1.6 }}>
+                              <strong style={{ color: 'var(--text-main)' }}>Impact:</strong> {card.content}
+                            </p>
+                            <div style={{ background: 'var(--bg-page)', padding: '9px 11px', borderRadius: 6, borderLeft: '2px solid #8B5CF6' }}>
+                              <p style={{ margin: 0, fontSize: 11, color: 'var(--text-main)', lineHeight: 1.5 }}>
+                                <strong style={{ color: '#8B5CF6' }}>Action:</strong> {card.severity === 'CRITICAL' ? 'Immediate escalation recommended. Block transaction and alert fraud team.' : card.severity === 'HIGH' ? 'Step-up authentication recommended. Monitor closely.' : 'Continue monitoring. No immediate action required.'}
+                              </p>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ))}
+                {isProcessing && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: '#8B5CF6', padding: 8, fontFamily: 'JetBrains Mono' }}>
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
+                      <Activity size={13} />
+                    </motion.div>
+                    Analyzing session context…
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Quick chips + Input */}
+              <div style={{ padding: 12, borderTop: '1px solid var(--border-light)', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto', paddingBottom: 2 }}>
+                  {[
+                    { label: 'Why trust dropped?', text: 'Why did trust drop?' },
+                    { label: 'Fraud probability', text: "What's the fraud probability?" },
+                    { label: 'Cognitive state', text: 'Analyze cognitive state' },
+                    { label: 'Drift report', text: 'Show drift detection report' },
+                    { label: 'Session summary', text: 'Give me a session summary' },
+                  ].map(chip => (
+                    <button key={chip.label} onClick={() => { setInput(chip.text); setTimeout(() => handleSend(), 50) }}
+                      style={{ whiteSpace: 'nowrap', fontSize: 10, background: 'var(--bg-page)', border: '1px solid var(--border-light)', color: 'var(--text-sub)', padding: '5px 10px', borderRadius: 14, cursor: 'pointer', fontFamily: 'JetBrains Mono', transition: 'all 0.15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(139,92,246,0.3)'; e.currentTarget.style.color = '#8B5CF6' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-light)'; e.currentTarget.style.color = 'var(--text-sub)' }}>
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <textarea
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+                    placeholder="Ask about trust changes, fraud risk, cognitive state…"
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '10px 40px 10px 12px', borderRadius: 8, border: '1px solid var(--border-light)', fontSize: 12, resize: 'none', height: 50, fontFamily: 'Inter, sans-serif', outline: 'none', color: 'var(--text-main)', background: 'var(--bg-page)', transition: 'border-color 0.15s' }}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(139,92,246,0.4)')}
+                    onBlur={e => (e.currentTarget.style.borderColor = 'var(--border-light)')}
+                  />
+                  <button onClick={handleSend} disabled={!input.trim()}
+                    style={{ position: 'absolute', right: 8, bottom: 10, background: input.trim() ? '#8B5CF6' : 'var(--border-light)', color: 'white', border: 'none', borderRadius: 6, padding: '6px 8px', cursor: input.trim() ? 'pointer' : 'not-allowed', display: 'flex', transition: 'background 0.15s' }}>
+                    <Send size={13} />
+                  </button>
+                </div>
               </div>
             </div>
           )}
-          {messages.map(msg => (
-            <div key={msg.id} style={{ marginBottom: 14 }}>
-              {msg.role === 'user' ? (
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <div style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: '12px 12px 4px 12px', padding: '8px 14px', maxWidth: '85%' }}>
-                    <span style={{ fontSize: 8, fontWeight: 700, color: '#8B5CF6', display: 'block', marginBottom: 3 }}>Analyst</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-main)' }}>{msg.content}</span>
-                  </div>
+
+          {activeTab === 'insights' && (
+            <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ background: anomalyScore > 0.3 ? 'rgba(239,68,68,0.06)' : 'rgba(16,185,129,0.06)', border: `1px solid ${anomalyScore > 0.3 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)'}`, borderRadius: 10, padding: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  {anomalyScore > 0.3 ? <AlertTriangle size={14} color="#EF4444" /> : <CheckCircle size={14} color="#10B981" />}
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-main)', fontFamily: 'Space Grotesk' }}>Session Risk Assessment</span>
                 </div>
-              ) : (
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                    <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Shield size={12} color="#10B981" />
-                    </div>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#10B981', fontFamily: 'JetBrains Mono' }}>AEGIS-X AI</span>
-                    <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>· Reasoning complete</span>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-sub)', lineHeight: 1.6 }}>
+                  {trustScore > 85 ? 'Session operating normally. No behavioral anomalies detected.' : trustScore > 60 ? `Elevated risk detected. Trust at ${trustScore.toFixed(0)}% with ${cognitiveState} cognitive state. Step-up verification recommended.` : `Critical risk level. Trust collapsed to ${trustScore.toFixed(0)}%. Immediate session review required.`}
+                </p>
+              </div>
+              {driftDetected && (
+                <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: 11 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#D97706', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <Activity size={12} /> CUSUM Drift Alert
                   </div>
-                  {msg.cards?.map((card, i) => <AICardComponent key={i} card={card} />)}
+                  <p style={{ fontSize: 11, color: 'var(--text-sub)', margin: 0 }}>Behavioral drift detected (severity: {driftSeverity}). Similarity dropped to {(similarity * 100).toFixed(1)}%.</p>
                 </div>
               )}
+              {cognitiveState !== 'calm' && cognitiveState !== 'focused' && (
+                <div style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: 11 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#EF4444', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <Brain size={12} /> Cognitive Alert
+                  </div>
+                  <p style={{ fontSize: 11, color: 'var(--text-sub)', margin: 0 }}>User in {cognitiveState.toUpperCase()} state. {cognitiveState === 'coerced' ? 'External pressure indicators detected.' : cognitiveState === 'robotic' ? 'Non-human interaction pattern.' : 'Elevated stress markers.'}</p>
+                </div>
+              )}
+              {[
+                { label: 'Trust Score', value: `${trustScore.toFixed(0)}%`, good: trustScore > 85 },
+                { label: 'Similarity', value: `${(similarity * 100).toFixed(1)}%`, good: similarity > 0.85 },
+                { label: 'Drift', value: driftDetected ? driftSeverity : 'None', good: !driftDetected },
+                { label: 'Cognitive', value: cognitiveState, good: cognitiveState === 'calm' || cognitiveState === 'focused' },
+                { label: 'Fraud Prob', value: `${(fraudProbability * 100).toFixed(0)}%`, good: fraudProbability < 0.2 },
+                { label: 'Events', value: String(state.eventCount), good: true },
+              ].map(({ label, value, good }) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', background: 'var(--bg-elevated)', borderRadius: 7, border: '1px solid var(--border-light)' }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>{label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: good ? '#10B981' : '#F59E0B', fontFamily: 'JetBrains Mono' }}>{value}</span>
+                </div>
+              ))}
             </div>
-          ))}
-          <div ref={chatEndRef} />
-        </div>
+          )}
 
-        {/* Input */}
-        <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border-light)' }}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSend()}
-              placeholder="Ask the AI investigator..."
-              style={{ flex: 1, height: 36, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border-light)', background: 'rgba(255,255,255,0.03)', color: 'var(--text-main)', fontSize: 11, outline: 'none', transition: 'border-color 0.2s' }}
-              onFocus={e => (e.currentTarget.style.borderColor = 'rgba(139,92,246,0.4)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border-light)')}
-            />
-            <button onClick={handleSend} style={{ width: 36, height: 36, borderRadius: 8, border: 'none', background: '#8B5CF6', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Send size={14} />
-            </button>
-          </div>
-          <p style={{ fontSize: 8, color: 'var(--text-muted)', margin: '6px 0 0', fontFamily: 'JetBrains Mono' }}>
-            <CheckCircle size={8} color="#10B981" style={{ marginRight: 3 }} />All reasoning is logged and auditable · Session context loaded
-          </p>
+          {activeTab === 'quality' && (
+            <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-light)', borderRadius: 10, padding: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-main)', fontFamily: 'Space Grotesk', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <Shield size={13} color="#8B5CF6" /> Pipeline Quality
+                  </span>
+                  <span style={{ fontSize: 20, fontWeight: 700, color: '#10B981', fontFamily: 'Space Grotesk' }}>98/100</span>
+                </div>
+                <div style={{ height: 6, background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: '98%', background: '#10B981', borderRadius: 3 }} />
+                </div>
+              </div>
+              {[
+                { label: 'Model Accuracy', value: '96.3%', good: true },
+                { label: 'Embedding Dim', value: '384', good: true },
+                { label: 'Pipeline Latency', value: `${state.latencyMs.toFixed(0)}ms`, good: state.latencyMs < 100 },
+                { label: 'CUSUM Sensitivity', value: 'High', good: true },
+                { label: 'Baseline Stability', value: `${(similarity * 100).toFixed(0)}%`, good: similarity > 0.9 },
+                { label: 'Events Processed', value: String(state.eventCount), good: true },
+              ].map(({ label, value, good }) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', background: 'var(--bg-page)', borderRadius: 7, border: '1px solid var(--border-light)' }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>{label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: good ? '#10B981' : '#F59E0B', fontFamily: 'JetBrains Mono' }}>{value}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
