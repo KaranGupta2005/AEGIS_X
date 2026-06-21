@@ -75,14 +75,14 @@ const Stepper: React.FC<StepperProps> = ({
       </div>
 
       {/* Step content */}
-      <div style={{ minHeight: 160, position: 'relative' }}>
+      <div style={{ minHeight: 40, position: 'relative' }}>
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.2 }}
           >
             {steps[currentStep - 1]}
           </motion.div>
