@@ -57,22 +57,22 @@ class CUSUMDetector:
 
     def __init__(
         self,
-        expected_similarity: float = 0.95,
-        allowance: float = 0.03,
-        drift_threshold: float = 0.35,
-        instant_jump_threshold: float = 0.15,
+        expected_similarity: float = 0.995,
+        allowance: float = 0.01,
+        drift_threshold: float = 0.15,
+        instant_jump_threshold: float = 0.08,
     ):
         """
         Args:
             expected_similarity: The similarity score expected for a genuine user.
                                  Based on Phase 2B tests: normal sessions score ~0.998.
-                                 We use 0.95 as a conservative expectation.
+                                 We use 0.995 as our baseline expectation.
             allowance: Slack parameter (k). Deviations below this are ignored.
                       Prevents natural variance from accumulating false drift.
-                      Set to ~3× the normal variance (0.01 * 3 = 0.03).
+                      Set to match normal session variance (~0.01).
             drift_threshold: CUSUM threshold (h) for declaring drift.
                             When cumulative sum exceeds this → DRIFT DETECTED.
-                            Calibrated so ~10 steps of consistent 0.05 decay triggers alert.
+                            Calibrated so ~8 steps of consistent decay triggers alert.
             instant_jump_threshold: Single-step drop that immediately triggers alert.
                                    If similarity drops by more than this in one step → INSTANT ALERT.
                                    Catches malware injection without waiting for accumulation.
