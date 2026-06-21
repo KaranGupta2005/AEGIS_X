@@ -1,5 +1,8 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
+import Highcharts from 'highcharts'
+import HighchartsMore from 'highcharts/highcharts-more'
+import HighchartsReact from 'highcharts-react-official'
 import {
   Shield, Activity, Brain, Fingerprint, AlertTriangle, Radio,
   Wifi, WifiOff, Target,
@@ -7,6 +10,8 @@ import {
 import { useStore } from '../../services/store'
 import { SimulatorScenario } from '../../services/api'
 import Stepper, { Step } from '../components/Stepper'
+
+HighchartsMore(Highcharts)
 
 const SCENARIOS: { key: SimulatorScenario; label: string; color: string }[] = [
   { key: 'normal', label: 'Normal User', color: '#10B981' },
@@ -19,53 +24,6 @@ function getTrustColor(score: number) {
   if (score > 60) return '#F59E0B'
   if (score > 40) return '#F97316'
   return '#EF4444'
-}
-
-const TrustGauge: React.FC<{ value: number; color: string }> = ({ value, color }) => {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<any>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const Highcharts = (await import('highcharts')).default
-      const More = (await import('highcharts/highcharts-more.src.js' as any)).default
-      if (typeof More === 'function') More(Highcharts)
-      if (cancelled || !containerRef.current) return
-
-      chartRef.current = Highcharts.chart(containerRef.current, {
-        chart: { type: 'gauge', backgroundColor: 'transparent', height: 180, margin: [0, 0, 0, 0] },
-        title: undefined,
-        pane: { startAngle: -90, endAngle: 90, background: undefined },
-        yAxis: {
-          min: 0, max: 100, lineWidth: 0, tickWidth: 0, labels: { enabled: false },
-          plotBands: [
-            { from: 0, to: 40, color: 'rgba(239,68,68,0.15)', innerRadius: '85%', outerRadius: '100%' },
-            { from: 40, to: 70, color: 'rgba(245,158,11,0.15)', innerRadius: '85%', outerRadius: '100%' },
-            { from: 70, to: 100, color: 'rgba(16,185,129,0.15)', innerRadius: '85%', outerRadius: '100%' },
-          ],
-        },
-        series: [{
-          type: 'gauge',
-          data: [Math.round(value)],
-          dial: { radius: '75%', backgroundColor: color, baseWidth: 6, topWidth: 1, baseLength: '0%', rearLength: '0%' },
-          pivot: { backgroundColor: color, radius: 5 },
-          dataLabels: { enabled: true, format: `<div style="text-align:center"><span style="font-size:32px;font-weight:800;color:${color};font-family:Space Grotesk">{y}</span><br/><span style="font-size:9px;color:#64748B;font-family:JetBrains Mono">TRUST SCORE</span></div>`, borderWidth: 0, y: 20, useHTML: true },
-        }],
-        tooltip: { enabled: false },
-        credits: { enabled: false },
-      } as any)
-    })()
-    return () => { cancelled = true; chartRef.current?.destroy() }
-  }, [])
-
-  useEffect(() => {
-    if (chartRef.current?.series?.[0]) {
-      chartRef.current.series[0].points[0]?.update(Math.round(value), true)
-    }
-  }, [value])
-
-  return <div ref={containerRef} style={{ width: '100%', height: 180 }} />
 }
 
 const StatCard: React.FC<{ label: string; value: string; sub: string; color: string; icon: React.ReactNode }> = ({ label, value, sub, color, icon }) => (
@@ -84,59 +42,6 @@ const StatCard: React.FC<{ label: string; value: string; sub: string; color: str
   </motion.div>
 )
 
-const TrustSpline: React.FC<{ data: any[]; trustColor: string }> = ({ data, trustColor }) => {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<any>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const Highcharts = (await import('highcharts')).default
-      if (cancelled || !containerRef.current) return
-
-      const animateSVGPath = (svgElem: any, animation: any) => {
-        const length = svgElem.element.getTotalLength()
-        svgElem.attr({ 'stroke-dasharray': length, 'stroke-dashoffset': length, opacity: 1 })
-        svgElem.animate({ 'stroke-dashoffset': 0 }, animation)
-      }
-
-      ;(Highcharts as any).seriesTypes.line.prototype.animate = function (init: boolean) {
-        if (!init) animateSVGPath(this.graph, (Highcharts as any).animObject(this.options.animation))
-      }
-
-      chartRef.current = Highcharts.chart(containerRef.current, {
-        chart: { type: 'spline', backgroundColor: 'transparent', height: 140, margin: [10, 10, 25, 35] },
-        title: undefined,
-        xAxis: { visible: false },
-        yAxis: [
-          { title: { text: 'Trust %', style: { color: trustColor, fontSize: '9px' } }, min: 0, max: 100, gridLineColor: 'rgba(255,255,255,0.04)', labels: { style: { color: '#64748B', fontSize: '9px' } } },
-          { title: { text: 'Similarity', style: { color: '#3B82F6', fontSize: '9px' } }, min: 0, max: 100, opposite: true, gridLineWidth: 0, labels: { style: { color: '#64748B', fontSize: '9px' } } },
-        ],
-        legend: { enabled: false },
-        credits: { enabled: false },
-        tooltip: { shared: true, backgroundColor: '#1E293B', borderColor: '#334155', style: { color: '#E2E8F0', fontSize: '10px', fontFamily: 'JetBrains Mono' } },
-        plotOptions: { series: { animation: { duration: 1000 }, marker: { enabled: false }, lineWidth: 2 } },
-        series: [
-          { type: 'spline', name: 'Trust', yAxis: 0, data: data.map(d => d.trust), color: trustColor, animation: { duration: 1000 } },
-          { type: 'spline', name: 'Similarity', yAxis: 1, data: data.map(d => d.similarity * 100), color: '#3B82F6', dashStyle: 'ShortDash', lineWidth: 1.5, animation: { duration: 1000, defer: 500 } as any },
-        ],
-      } as any)
-    })()
-    return () => { cancelled = true; chartRef.current?.destroy() }
-  }, [])
-
-  useEffect(() => {
-    if (chartRef.current && data.length > 0) {
-      const trustData = data.map(d => d.trust)
-      const simData = data.map(d => d.similarity * 100)
-      chartRef.current.series[0]?.setData(trustData, false)
-      chartRef.current.series[1]?.setData(simData, true)
-    }
-  }, [data])
-
-  return <div ref={containerRef} style={{ width: '100%', height: 140 }} />
-}
-
 const LiveMonitor: React.FC = () => {
   const { state, connect, switchScenario } = useStore()
   const { trustScore, decision, cognitiveState, similarity, driftDetected, driftSeverity, eventCount, velocity, acceleration, isConnected, scenario, latencyMs, confidence, entropy, trend, anomalyScore, fraudProbability, fraudTrajectory, intentVector, timeline } = state
@@ -147,6 +52,47 @@ const LiveMonitor: React.FC = () => {
   const cogColors: Record<string, string> = { calm: '#10B981', focused: '#3B82F6', distressed: '#F59E0B', panicked: '#F97316', coerced: '#EF4444', robotic: '#8B5CF6' }
   const cogColor = cogColors[cognitiveState] || '#94A3B8'
 
+  const gaugeOptions: Highcharts.Options = {
+    chart: { type: 'gauge', backgroundColor: 'transparent', height: 170 },
+    title: undefined,
+    pane: { startAngle: -90, endAngle: 90, background: undefined },
+    yAxis: {
+      min: 0, max: 100, lineWidth: 0, tickWidth: 0, labels: { enabled: false },
+      plotBands: [
+        { from: 0, to: 40, color: 'rgba(239,68,68,0.15)', innerRadius: '80%', outerRadius: '100%' } as any,
+        { from: 40, to: 70, color: 'rgba(245,158,11,0.15)', innerRadius: '80%', outerRadius: '100%' } as any,
+        { from: 70, to: 100, color: 'rgba(16,185,129,0.15)', innerRadius: '80%', outerRadius: '100%' } as any,
+      ],
+    },
+    series: [{
+      type: 'gauge' as any,
+      data: [Math.round(trustScore)],
+      dial: { radius: '70%', backgroundColor: trustColor, baseWidth: 6, topWidth: 1, baseLength: '0%', rearLength: '0%' },
+      pivot: { backgroundColor: trustColor, radius: 5 },
+      dataLabels: { enabled: true, borderWidth: 0, y: 20, useHTML: true, format: `<div style="text-align:center"><span style="font-size:28px;font-weight:800;color:${trustColor};font-family:Space Grotesk">{y}</span><br/><span style="font-size:9px;color:#64748B;font-family:JetBrains Mono">TRUST SCORE</span></div>` },
+    }],
+    tooltip: { enabled: false },
+    credits: { enabled: false },
+  }
+
+  const splineOptions: Highcharts.Options = {
+    chart: { type: 'spline', backgroundColor: 'transparent', height: 140 },
+    title: undefined,
+    xAxis: { visible: false },
+    yAxis: [
+      { title: { text: '' }, min: 0, max: 100, gridLineColor: 'rgba(255,255,255,0.04)', labels: { style: { color: '#64748B', fontSize: '9px' } } },
+      { title: { text: '' }, min: 0, max: 100, opposite: true, gridLineWidth: 0, labels: { style: { color: '#64748B', fontSize: '9px' } } },
+    ],
+    legend: { enabled: false },
+    credits: { enabled: false },
+    tooltip: { shared: true, backgroundColor: '#1E293B', borderColor: '#334155', style: { color: '#E2E8F0', fontSize: '10px' } },
+    plotOptions: { series: { animation: { duration: 800 }, marker: { enabled: false }, lineWidth: 2.5 } },
+    series: [
+      { type: 'spline' as any, name: 'Trust %', yAxis: 0, data: timeline.slice(-30).map(d => d.trust), color: trustColor },
+      { type: 'spline' as any, name: 'Similarity', yAxis: 1, data: timeline.slice(-30).map(d => d.similarity * 100), color: '#3B82F6', dashStyle: 'ShortDash' as any, lineWidth: 1.5 },
+    ],
+  }
+
   return (
     <div>
       {/* Header */}
@@ -156,19 +102,19 @@ const LiveMonitor: React.FC = () => {
             <Radio size={18} color="#10B981" /> Live Session Monitor
           </h1>
           <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: '3px 0 0', fontFamily: 'JetBrains Mono', display: 'flex', alignItems: 'center', gap: 5 }}>
-            {isConnected ? <><Wifi size={10} color="#10B981" /> Pipeline active · streaming every 2s</> : <><WifiOff size={10} color="#EF4444" /> Disconnected</>}
+            {isConnected ? <><Wifi size={10} color="#10B981" /> Pipeline active</> : <><WifiOff size={10} color="#EF4444" /> Disconnected</>}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           {SCENARIOS.map(s => (
-            <button key={s.key} onClick={() => switchScenario(s.key)} style={{ padding: '5px 12px', borderRadius: 999, fontSize: 10, fontWeight: 700, cursor: 'pointer', background: scenario === s.key ? `${s.color}15` : 'transparent', border: `1px solid ${scenario === s.key ? s.color : 'var(--border-light)'}`, color: scenario === s.key ? s.color : 'var(--text-muted)', transition: 'all 0.15s' }}>
+            <button key={s.key} onClick={() => switchScenario(s.key)} style={{ padding: '5px 12px', borderRadius: 999, fontSize: 10, fontWeight: 700, cursor: 'pointer', background: scenario === s.key ? `${s.color}15` : 'transparent', border: `1px solid ${scenario === s.key ? s.color : 'var(--border-light)'}`, color: scenario === s.key ? s.color : 'var(--text-muted)' }}>
               {s.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Stats Row */}
+      {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
         <StatCard label="Similarity" value={similarity.toFixed(3)} sub="Cosine baseline" color={similarity > 0.85 ? '#10B981' : '#F59E0B'} icon={<Fingerprint size={16} style={{ color: similarity > 0.85 ? '#10B981' : '#F59E0B' }} />} />
         <StatCard label="Drift" value={driftDetected ? driftSeverity.toUpperCase() : 'NONE'} sub="CUSUM detector" color={driftDetected ? '#EF4444' : '#10B981'} icon={<AlertTriangle size={16} style={{ color: driftDetected ? '#EF4444' : '#10B981' }} />} />
@@ -176,12 +122,11 @@ const LiveMonitor: React.FC = () => {
         <StatCard label="Fraud Risk" value={`${(fraudProbability * 100).toFixed(0)}%`} sub={fraudTrajectory} color={fraudProbability > 0.5 ? '#EF4444' : '#10B981'} icon={<Target size={16} style={{ color: fraudProbability > 0.5 ? '#EF4444' : '#10B981' }} />} />
       </div>
 
-      {/* Main: Gauge + Chart + Decision */}
-      <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr 220px', gap: 14, marginBottom: 16 }}>
-        {/* Gauge */}
-        <div style={{ background: 'var(--bg-card)', borderRadius: 14, padding: '16px 10px', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <TrustGauge value={trustScore} color={trustColor} />
-          <div style={{ display: 'flex', gap: 18, marginTop: 6 }}>
+      {/* Gauge + Spline + Decision */}
+      <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr 220px', gap: 14, marginBottom: 16 }}>
+        <div style={{ background: 'var(--bg-card)', borderRadius: 14, padding: '8px', border: '1px solid var(--border-light)' }}>
+          <HighchartsReact highcharts={Highcharts} options={gaugeOptions} />
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 4 }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 8, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>VELOCITY</div>
               <div style={{ fontSize: 12, fontWeight: 700, color: velocity < -0.01 ? '#EF4444' : '#10B981', fontFamily: 'Space Grotesk' }}>{velocity > 0 ? '+' : ''}{velocity.toFixed(4)}</div>
@@ -193,17 +138,16 @@ const LiveMonitor: React.FC = () => {
           </div>
         </div>
 
-        {/* Chart */}
-        <div style={{ background: 'var(--bg-card)', borderRadius: 14, padding: '14px 16px', border: '1px solid var(--border-light)' }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, fontFamily: 'JetBrains Mono', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Trust + Similarity Timeline</div>
-          <TrustSpline data={timeline.slice(-30)} trustColor={trustColor} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 8 }}>
+        <div style={{ background: 'var(--bg-card)', borderRadius: 14, padding: '12px 14px', border: '1px solid var(--border-light)' }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, fontFamily: 'JetBrains Mono', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Trust + Similarity</div>
+          <HighchartsReact highcharts={Highcharts} options={splineOptions} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 6 }}>
             {[
               { label: 'ENTROPY', value: entropy.toFixed(3), color: '#8B5CF6' },
               { label: 'ACCEL', value: acceleration.toFixed(4), color: '#3B82F6' },
               { label: 'CONFIDENCE', value: `${(confidence * 100).toFixed(0)}%`, color: '#F59E0B' },
             ].map(m => (
-              <div key={m.label} style={{ padding: '5px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-light)' }}>
+              <div key={m.label} style={{ padding: '4px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-light)' }}>
                 <div style={{ fontSize: 8, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>{m.label}</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: m.color, fontFamily: 'Space Grotesk' }}>{m.value}</div>
               </div>
@@ -211,7 +155,6 @@ const LiveMonitor: React.FC = () => {
           </div>
         </div>
 
-        {/* Decision Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ padding: 12, borderRadius: 10, flex: 1, background: decision === 'ALLOW' ? 'rgba(16,185,129,0.05)' : decision === 'STEP_UP' ? 'rgba(245,158,11,0.05)' : 'rgba(239,68,68,0.05)', border: `1px solid ${decision === 'ALLOW' ? 'rgba(16,185,129,0.15)' : decision === 'STEP_UP' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)'}` }}>
             <div style={{ fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--text-muted)', marginBottom: 3, fontFamily: 'JetBrains Mono' }}>DECISION</div>
@@ -235,7 +178,7 @@ const LiveMonitor: React.FC = () => {
         </div>
       </div>
 
-      {/* Pipeline Stepper — compact with live data */}
+      {/* Pipeline Stepper */}
       <div style={{ background: 'var(--bg-card)', borderRadius: 14, padding: '14px 18px', border: '1px solid var(--border-light)', marginBottom: 14 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-main)', marginBottom: 10, fontFamily: 'Space Grotesk' }}>Pipeline Execution</div>
         <Stepper initialStep={1} backButtonText="Prev" nextButtonText="Next">

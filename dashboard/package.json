@@ -12,7 +12,7 @@
     "@types/three": "^0.184.1",
     "clsx": "2.1.1",
     "gsap": "^3.15.0",
-    "highcharts": "^13.0.0",
+    "highcharts": "^11.4.8",
     "highcharts-react-official": "^3.2.3",
     "lucide-react": "0.487.0",
     "motion": "12.23.24",
