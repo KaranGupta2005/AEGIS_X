@@ -1,122 +1,82 @@
-import React, { useState, useEffect } from 'react'
-import { motion } from 'motion/react'
-import { TrendingDown, Clock } from 'lucide-react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area, AreaChart } from 'recharts'
-
-type Scenario = 'normal' | 'scam' | 'malware'
-
-function generateData(scenario: Scenario, length: number) {
-  const data = []
-  let trust = 95
-  for (let i = 0; i < length; i++) {
-    const time = `${String(Math.floor(i / 30) + 10).padStart(2, '0')}:${String((i * 2) % 60).padStart(2, '0')}`
-    if (scenario === 'normal') {
-      trust = Math.min(99, Math.max(90, trust + (Math.random() * 3 - 1.5)))
-    } else if (scenario === 'scam') {
-      if (i < 5) trust = Math.min(98, Math.max(90, trust + (Math.random() * 2 - 1)))
-      else trust = Math.max(25, trust - (Math.random() * 6 + 1.5))
-    } else {
-      if (i < 4) trust = Math.min(98, Math.max(92, trust + (Math.random() * 2 - 1)))
-      else trust = Math.max(15, trust - (Math.random() * 12 + 4))
-    }
-    data.push({
-      time,
-      trust: +trust.toFixed(1),
-      event: i === 5 && scenario === 'scam' ? 'PANIC DETECTED' : i === 4 && scenario === 'malware' ? 'MALWARE INJECTED' : null,
-    })
-  }
-  return data
-}
+import React from 'react'
+import { TrendingDown, Clock, Wifi } from 'lucide-react'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
+import { useStore } from '../../services/store'
 
 const TrustTimeline: React.FC = () => {
-  const [scenario, setScenario] = useState<Scenario>('normal')
-  const [data, setData] = useState(generateData('normal', 25))
+  const { state } = useStore()
+  const { timeline, trustScore, isConnected } = state
 
-  useEffect(() => {
-    setData(generateData(scenario, 25))
-  }, [scenario])
-
-  const minTrust = Math.min(...data.map(d => d.trust))
-  const maxTrust = Math.max(...data.map(d => d.trust))
-  const finalTrust = data[data.length - 1]?.trust || 0
+  const data = timeline.map(t => ({ ...t, trustPercent: t.trust }))
+  const minTrust = data.length > 0 ? Math.min(...data.map(d => d.trustPercent)) : 95
+  const maxTrust = data.length > 0 ? Math.max(...data.map(d => d.trustPercent)) : 99
+  const finalTrust = data.length > 0 ? data[data.length - 1].trustPercent : trustScore
 
   const getColor = (t: number) => t > 85 ? '#10b981' : t > 60 ? '#f59e0b' : '#ef4444'
+  const lineColor = getColor(finalTrust)
+
+  const eventMarkers = data.filter(d => d.drift_detected || d.cognitive_state === 'panicked' || d.cognitive_state === 'coerced' || d.decision === 'BLOCK')
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, fontFamily: 'Space Grotesk', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h1 className="heading" style={{ fontSize: 24, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
             <TrendingDown size={20} color="#f59e0b" /> Trust Timeline
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', fontSize: 12, marginTop: 4 }}>
-            Trust Score T(t) evolution over session lifetime
+          <p className="mono" style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Wifi size={10} color={isConnected ? '#10b981' : '#ef4444'} />
+            Live T(t) evolution — {data.length} observations
           </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {(['normal', 'scam', 'malware'] as Scenario[]).map(s => (
-            <button key={s} onClick={() => setScenario(s)} style={{
-              padding: '8px 14px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-              fontFamily: 'JetBrains Mono', cursor: 'pointer',
-              background: scenario === s ? 'rgba(16,185,129,0.1)' : 'var(--bg-card)',
-              border: `1px solid ${scenario === s ? '#10b981' : 'var(--border-light)'}`,
-              color: scenario === s ? '#10b981' : 'var(--text-sub)',
-            }}>
-              {s === 'normal' ? 'Normal' : s === 'scam' ? 'Scam Victim' : 'Malware'}
-            </button>
-          ))}
         </div>
       </div>
 
-      {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
         {[
           { label: 'Current', value: `${finalTrust.toFixed(0)}%`, color: getColor(finalTrust) },
           { label: 'Peak', value: `${maxTrust.toFixed(0)}%`, color: '#10b981' },
           { label: 'Minimum', value: `${minTrust.toFixed(0)}%`, color: getColor(minTrust) },
-          { label: 'Observations', value: String(data.length), color: '#3b82f6' },
+          { label: 'Velocity', value: `${state.velocity >= 0 ? '+' : ''}${state.velocity.toFixed(4)}`, color: state.velocity < -0.01 ? '#ef4444' : '#10b981' },
         ].map((s, i) => (
-          <div key={i} style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-light)', borderRadius: 10, padding: '14px 16px' }}>
-            <div style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', marginBottom: 4, letterSpacing: '0.08em' }}>{s.label}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: 'Space Grotesk', color: s.color }}>{s.value}</div>
+          <div key={i} className="card-base" style={{ padding: '14px 16px' }}>
+            <div className="label-xs" style={{ marginBottom: 4 }}>{s.label}</div>
+            <div className="heading" style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.value}</div>
           </div>
         ))}
       </div>
 
-      {/* Chart */}
-      <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-light)', borderRadius: 16, padding: 24 }}>
-        <ResponsiveContainer width="100%" height={340}>
-          <AreaChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="trustGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={getColor(finalTrust)} stopOpacity={0.3} />
-                <stop offset="100%" stopColor={getColor(finalTrust)} stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-            <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#64748b', fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
-            <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#64748b', fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
-            <Tooltip
-              contentStyle={{ background: '#1a2035', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontFamily: 'JetBrains Mono', fontSize: 11 }}
-              labelStyle={{ color: '#94a3b8' }}
-            />
-            <ReferenceLine y={85} stroke="#10b981" strokeDasharray="4 4" strokeOpacity={0.5} label={{ value: 'ALLOW', position: 'right', fontSize: 9, fill: '#10b981' }} />
-            <ReferenceLine y={60} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity={0.5} label={{ value: 'BLOCK', position: 'right', fontSize: 9, fill: '#ef4444' }} />
-            <Area type="monotone" dataKey="trust" stroke={getColor(finalTrust)} strokeWidth={2.5} fill="url(#trustGrad)" dot={false} activeDot={{ r: 4, stroke: getColor(finalTrust), strokeWidth: 2 }} />
-          </AreaChart>
-        </ResponsiveContainer>
+      <div className="card-base" style={{ padding: 24 }}>
+        {data.length > 0 ? (
+          <ResponsiveContainer width="100%" height={340}>
+            <AreaChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="trustGradLive" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={lineColor} stopOpacity={0.25} />
+                  <stop offset="100%" stopColor={lineColor} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+              <XAxis dataKey="time" tick={{ fontSize: 9, fill: '#475569', fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+              <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: '#475569', fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ background: '#0c1222', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, fontFamily: 'JetBrains Mono', fontSize: 10 }} />
+              <ReferenceLine y={85} stroke="#10b981" strokeDasharray="4 4" strokeOpacity={0.4} />
+              <ReferenceLine y={60} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity={0.4} />
+              <Area type="monotone" dataKey="trustPercent" name="Trust %" stroke={lineColor} strokeWidth={2.5} fill="url(#trustGradLive)" dot={false} activeDot={{ r: 4, stroke: lineColor, strokeWidth: 2 }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <div style={{ height: 340, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <p className="mono" style={{ color: 'var(--text-muted)', fontSize: 12 }}>Waiting for data... Switch scenario on Live Monitor to begin.</p>
+          </div>
+        )}
 
-        {/* Event markers */}
-        {data.filter(d => d.event).length > 0 && (
-          <div style={{ marginTop: 16, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            {data.filter(d => d.event).map((d, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
-                background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 6,
-              }}>
-                <Clock size={12} color="#ef4444" />
-                <span style={{ fontSize: 10, color: '#ef4444', fontFamily: 'JetBrains Mono', fontWeight: 600 }}>
-                  {d.time} — {d.event}
+        {eventMarkers.length > 0 && (
+          <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {eventMarkers.slice(-5).map((d, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 6 }}>
+                <Clock size={11} color="#ef4444" />
+                <span className="mono" style={{ fontSize: 9, color: '#ef4444', fontWeight: 600 }}>
+                  {d.time} — {d.decision === 'BLOCK' ? 'BLOCKED' : d.cognitive_state.toUpperCase()}
                 </span>
               </div>
             ))}

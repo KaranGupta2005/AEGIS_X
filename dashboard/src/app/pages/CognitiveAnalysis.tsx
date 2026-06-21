@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Brain, ArrowDown, Activity } from 'lucide-react'
+import { Brain, ArrowDown, Wifi } from 'lucide-react'
+import { useStore } from '../../services/store'
 
 const STATES = [
   { key: 'calm', label: 'CALM', color: '#10b981', desc: 'Normal baseline behavior', stability: 1.0 },
@@ -11,94 +12,45 @@ const STATES = [
   { key: 'robotic', label: 'ROBOTIC', color: '#8b5cf6', desc: 'Automated scripted interaction', stability: 0.05 },
 ]
 
-type Scenario = 'normal' | 'scam' | 'malware'
-
-const PROGRESSIONS: Record<Scenario, string[]> = {
-  normal: ['calm', 'focused', 'calm', 'calm', 'focused', 'calm'],
-  scam: ['calm', 'focused', 'distressed', 'distressed', 'panicked', 'panicked', 'coerced', 'coerced'],
-  malware: ['calm', 'calm', 'robotic', 'robotic', 'robotic', 'robotic'],
-}
-
 const CognitiveAnalysis: React.FC = () => {
-  const [scenario, setScenario] = useState<Scenario>('scam')
-  const [step, setStep] = useState(0)
-  const progression = PROGRESSIONS[scenario]
-  const currentState = progression[Math.min(step, progression.length - 1)]
-  const active = STATES.find(s => s.key === currentState)!
+  const { state } = useStore()
+  const { cognitiveState, cognitiveStability, cognitiveHistory, isConnected } = state
+  const active = STATES.find(s => s.key === cognitiveState) || STATES[0]
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      setStep(s => (s + 1) % progression.length)
-    }, 2500)
-    return () => clearInterval(id)
-  }, [progression])
-
-  useEffect(() => { setStep(0) }, [scenario])
-
-  const stateHistory = progression.slice(0, step + 1)
+  const uniqueHistory = cognitiveHistory.reduce<string[]>((acc, s) => {
+    if (acc.length === 0 || acc[acc.length - 1] !== s) acc.push(s)
+    return acc
+  }, []).slice(-8)
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, fontFamily: 'Space Grotesk', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Brain size={20} color="#3b82f6" /> Cognitive State Analysis
-          </h1>
-          <p style={{ color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', fontSize: 12, marginTop: 4 }}>
-            Random Forest classifier • 96.3% accuracy • 6 cognitive states
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {(['normal', 'scam', 'malware'] as Scenario[]).map(s => (
-            <button key={s} onClick={() => setScenario(s)} style={{
-              padding: '8px 14px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-              fontFamily: 'JetBrains Mono', cursor: 'pointer',
-              background: scenario === s ? 'rgba(59,130,246,0.1)' : 'var(--bg-card)',
-              border: `1px solid ${scenario === s ? '#3b82f6' : 'var(--border-light)'}`,
-              color: scenario === s ? '#3b82f6' : 'var(--text-sub)',
-            }}>
-              {s === 'normal' ? 'Normal' : s === 'scam' ? 'Scam Victim' : 'Malware'}
-            </button>
-          ))}
-        </div>
+      <div style={{ marginBottom: 28 }}>
+        <h1 className="heading" style={{ fontSize: 24, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Brain size={20} color="#3b82f6" /> Cognitive State Analysis
+        </h1>
+        <p className="mono" style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Wifi size={10} color={isConnected ? '#10b981' : '#ef4444'} />
+          Random Forest classifier • 96.3% accuracy • Live state from backend
+        </p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 24 }}>
         {/* State Machine */}
-        <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-light)', borderRadius: 16, padding: 24 }}>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', marginBottom: 16, letterSpacing: '0.08em' }}>STATE MACHINE</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {STATES.map((state, i) => {
-              const isActive = state.key === currentState
+        <div className="card-base" style={{ padding: 24 }}>
+          <div className="label-xs" style={{ marginBottom: 16 }}>STATE MACHINE</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {STATES.map(s => {
+              const isActive = s.key === cognitiveState
               return (
-                <motion.div
-                  key={state.key}
-                  animate={{
-                    background: isActive ? `${state.color}15` : 'transparent',
-                    borderColor: isActive ? state.color : 'var(--border-light)',
-                    scale: isActive ? 1.02 : 1,
-                  }}
-                  style={{
-                    border: '1px solid var(--border-light)', borderRadius: 10,
-                    padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  }}
-                >
+                <motion.div key={s.key} animate={{ background: isActive ? `${s.color}12` : 'transparent', borderColor: isActive ? `${s.color}40` : 'var(--border-light)', scale: isActive ? 1.02 : 1 }} style={{ border: '1px solid var(--border-light)', borderRadius: 10, padding: '11px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{
-                      width: 10, height: 10, borderRadius: '50%', background: state.color,
-                      boxShadow: isActive ? `0 0 12px ${state.color}` : 'none',
-                      opacity: isActive ? 1 : 0.4,
-                    }} />
+                    <div style={{ width: 9, height: 9, borderRadius: '50%', background: s.color, boxShadow: isActive ? `0 0 12px ${s.color}` : 'none', opacity: isActive ? 1 : 0.35 }} />
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: isActive ? state.color : 'var(--text-sub)', fontFamily: 'JetBrains Mono' }}>
-                        {state.label}
-                      </div>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{state.desc}</div>
+                      <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: isActive ? s.color : 'var(--text-sub)' }}>{s.label}</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{s.desc}</div>
                     </div>
                   </div>
-                  <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono', color: isActive ? state.color : 'var(--text-muted)' }}>
-                    {state.stability.toFixed(2)}
-                  </span>
+                  <span className="mono" style={{ fontSize: 10, color: isActive ? s.color : 'var(--text-muted)' }}>{s.stability.toFixed(2)}</span>
                 </motion.div>
               )
             })}
@@ -108,59 +60,46 @@ const CognitiveAnalysis: React.FC = () => {
         {/* Right Panel */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Current State Hero */}
-          <div style={{
-            background: 'var(--bg-panel)', border: '1px solid var(--border-light)',
-            borderRadius: 16, padding: 28, textAlign: 'center',
-          }}>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', marginBottom: 12, letterSpacing: '0.1em' }}>CURRENT STATE</div>
+          <div className="card-base" style={{ padding: 28, textAlign: 'center' }}>
+            <div className="label-xs" style={{ marginBottom: 14 }}>CURRENT STATE</div>
             <AnimatePresence mode="wait">
-              <motion.div
-                key={currentState}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                style={{ fontSize: 36, fontWeight: 700, fontFamily: 'JetBrains Mono', color: active.color, textShadow: `0 0 20px ${active.color}40` }}
-              >
+              <motion.div key={cognitiveState} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="mono" style={{ fontSize: 34, fontWeight: 700, color: active.color, textShadow: `0 0 24px ${active.color}30` }}>
                 {active.label}
               </motion.div>
             </AnimatePresence>
-            <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text-sub)' }}>{active.desc}</div>
-            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center', gap: 24 }}>
+            <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-sub)' }}>{active.desc}</div>
+            <div style={{ marginTop: 18, display: 'flex', justifyContent: 'center', gap: 28 }}>
               <div>
-                <div style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>STABILITY</div>
-                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'Space Grotesk', color: active.color }}>{active.stability.toFixed(2)}</div>
+                <div className="label-xs">STABILITY</div>
+                <div className="heading" style={{ fontSize: 20, fontWeight: 700, color: active.color, marginTop: 2 }}>{cognitiveStability.toFixed(2)}</div>
               </div>
               <div>
-                <div style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>T(t) COMPONENT</div>
-                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'Space Grotesk', color: active.color }}>{(active.stability * 0.20).toFixed(2)}</div>
+                <div className="label-xs">T(t) COMPONENT</div>
+                <div className="heading" style={{ fontSize: 20, fontWeight: 700, color: active.color, marginTop: 2 }}>{(cognitiveStability * 0.20).toFixed(3)}</div>
               </div>
             </div>
           </div>
 
           {/* State Progression */}
-          <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-light)', borderRadius: 16, padding: 24 }}>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', marginBottom: 14, letterSpacing: '0.08em' }}>STATE PROGRESSION</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              {stateHistory.map((s, i) => {
-                const st = STATES.find(x => x.key === s)!
-                return (
-                  <React.Fragment key={i}>
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      style={{
-                        padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600,
-                        fontFamily: 'JetBrains Mono', color: st.color,
-                        background: `${st.color}15`, border: `1px solid ${st.color}30`,
-                      }}
-                    >
-                      {st.label}
-                    </motion.div>
-                    {i < stateHistory.length - 1 && <ArrowDown size={12} color="var(--text-muted)" />}
-                  </React.Fragment>
-                )
-              })}
-            </div>
+          <div className="card-base" style={{ padding: 24 }}>
+            <div className="label-xs" style={{ marginBottom: 14 }}>STATE PROGRESSION (live)</div>
+            {uniqueHistory.length > 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                {uniqueHistory.map((s, i) => {
+                  const st = STATES.find(x => x.key === s) || STATES[0]
+                  return (
+                    <React.Fragment key={i}>
+                      <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="mono" style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600, color: st.color, background: `${st.color}12`, border: `1px solid ${st.color}25` }}>
+                        {st.label}
+                      </motion.div>
+                      {i < uniqueHistory.length - 1 && <ArrowDown size={11} color="var(--text-muted)" />}
+                    </React.Fragment>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>Waiting for data...</p>
+            )}
           </div>
         </div>
       </div>
