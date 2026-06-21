@@ -13,6 +13,8 @@ from backend.services.drift_service import CUSUMDetector
 from backend.services.cognitive_service import CognitiveService
 from backend.services.trust_service import TrustService, TransactionScorer, DeviceTrustScorer
 from backend.services.decision_service import DecisionService
+from backend.services.anomaly_service import AnomalyService
+from backend.services.fraud_predictor import FraudPredictor
 
 
 @dataclass
@@ -67,6 +69,15 @@ class TrustUpdate:
     cognitive_stability: float
     transaction_score: float
 
+    # Anomaly detection
+    anomaly_score: float
+    is_anomaly: bool
+
+    # Fraud prediction
+    fraud_probability: float
+    fraud_trajectory: str
+    intent_vector: Dict
+
     # Temporal dynamics
     velocity: float
     acceleration: float
@@ -102,6 +113,15 @@ class TrustUpdate:
             "drift": {
                 "detected": self.drift_detected,
                 "severity": self.drift_severity,
+            },
+            "anomaly": {
+                "score": round(self.anomaly_score, 4),
+                "is_anomaly": self.is_anomaly,
+            },
+            "fraud": {
+                "probability": round(self.fraud_probability, 4),
+                "trajectory": self.fraud_trajectory,
+                "intent_vector": self.intent_vector,
             },
             "temporal_dynamics": {
                 "velocity": round(self.velocity, 6),
@@ -160,6 +180,8 @@ class TrustPipeline:
         self._transaction_scorer = TransactionScorer()
         self._device_scorer = DeviceTrustScorer()
         self._decision_service = DecisionService()
+        self._anomaly_service = AnomalyService()
+        self._fraud_predictor = FraudPredictor()
 
     def create_context(
         self,
@@ -257,6 +279,13 @@ class TrustPipeline:
         drift_result = ctx.cusum.update(similarity)
 
         # ═══════════════════════════════════════════════════════════════════
+        # STEP 6.5: Anomaly Detection (Isolation Forest)
+        # ═══════════════════════════════════════════════════════════════════
+        feature_array = np.array(list(features.values()), dtype=np.float32)
+        self._anomaly_service.feed_sample(feature_array)
+        anomaly_result = self._anomaly_service.score_anomaly(feature_array)
+
+        # ═══════════════════════════════════════════════════════════════════
         # STEP 7: Cognitive State Classification
         # ═══════════════════════════════════════════════════════════════════
         cognitive_result = self._cognitive_service.assess(features)
@@ -295,6 +324,20 @@ class TrustPipeline:
         )
 
         # ═══════════════════════════════════════════════════════════════════
+        # STEP 11: Fraud Intent Prediction
+        # ═══════════════════════════════════════════════════════════════════
+        fraud_result = self._fraud_predictor.predict_intent(
+            trust_score=trust_result["effective_trust"],
+            similarity=similarity,
+            cognitive_state=cognitive_result["state"],
+            drift_detected=drift_result["drift_detected"],
+            drift_severity=drift_result["severity"],
+            velocity=trust_result["temporal"]["velocity"],
+            entropy=temporal["entropy"],
+            anomaly_score=anomaly_result["anomaly_score"],
+        )
+
+        # ═══════════════════════════════════════════════════════════════════
         # BUILD RESPONSE
         # ═══════════════════════════════════════════════════════════════════
         latency_ms = (time.perf_counter() - t_start) * 1000
@@ -310,6 +353,11 @@ class TrustPipeline:
             cognitive_state=cognitive_result["state"],
             cognitive_stability=cognitive_result["stability_score"],
             transaction_score=tx_result["score"],
+            anomaly_score=anomaly_result["anomaly_score"],
+            is_anomaly=anomaly_result["is_anomaly"],
+            fraud_probability=fraud_result["fraud_probability"],
+            fraud_trajectory=fraud_result["trajectory"],
+            intent_vector=fraud_result["intent_vector"],
             velocity=trust_result["temporal"]["velocity"],
             acceleration=trust_result["temporal"]["acceleration"],
             trend=trust_result["temporal"]["trend"],

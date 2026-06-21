@@ -45,6 +45,11 @@ export interface SessionState {
   alerts: AlertEntry[]
   timeline: TimelineEntry[]
   cognitiveHistory: string[]
+  anomalyScore: number
+  isAnomaly: boolean
+  fraudProbability: number
+  fraudTrajectory: string
+  intentVector: { coercion_probability: number; takeover_probability: number; anomaly_severity: number; robotic_probability: number }
 }
 
 const initialState: SessionState = {
@@ -73,6 +78,11 @@ const initialState: SessionState = {
   alerts: [],
   timeline: [],
   cognitiveHistory: [],
+  anomalyScore: 0,
+  isAnomaly: false,
+  fraudProbability: 0,
+  fraudTrajectory: 'stable',
+  intentVector: { coercion_probability: 0, takeover_probability: 0, anomaly_severity: 0, robotic_probability: 0 },
 }
 
 type Action =
@@ -132,6 +142,11 @@ function reducer(state: SessionState, action: Action): SessionState {
         alerts: [...state.alerts, ...newAlerts].slice(-50),
         timeline: [...state.timeline, newEntry].slice(-100),
         cognitiveHistory: [...state.cognitiveHistory, d.cognitive_state ?? state.cognitiveState].slice(-50),
+        anomalyScore: d.anomaly?.score ?? state.anomalyScore,
+        isAnomaly: d.anomaly?.is_anomaly ?? state.isAnomaly,
+        fraudProbability: d.fraud?.probability ?? state.fraudProbability,
+        fraudTrajectory: d.fraud?.trajectory ?? state.fraudTrajectory,
+        intentVector: d.fraud?.intent_vector ?? state.intentVector,
       }
     }
     case 'RESET':

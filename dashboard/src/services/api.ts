@@ -15,6 +15,20 @@ export interface TrustUpdate {
   cognitive_stability: number
   drift_detected: boolean
   drift_severity: string
+  anomaly: {
+    score: number
+    is_anomaly: boolean
+  }
+  fraud: {
+    probability: number
+    trajectory: string
+    intent_vector: {
+      coercion_probability: number
+      takeover_probability: number
+      anomaly_severity: number
+      robotic_probability: number
+    }
+  }
   temporal: {
     velocity: number
     acceleration: number

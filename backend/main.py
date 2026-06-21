@@ -6,6 +6,7 @@ import json
 
 from backend.websocket.socket_manager import ConnectionManager
 from backend.api.dependencies import get_processor, set_processor
+from backend.core.rate_limiter import RateLimitMiddleware
 
 
 connection_manager = ConnectionManager()
@@ -37,6 +38,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(RateLimitMiddleware, requests_per_second=50, burst=100)
+
 from backend.api.session_routes import router as session_router
 from backend.api.event_routes import router as event_router
 from backend.api.monitor_routes import router as monitor_router
@@ -56,10 +59,19 @@ def health():
 @app.get("/status", tags=["Health"])
 def system_status():
     processor = get_processor()
+    from backend.services.cache_service import CacheService
+    cache = CacheService()
     return {
         "active_users": processor.active_user_count,
         "connections": connection_manager.get_connection_info(),
+        "cache": cache.health(),
     }
+
+
+@app.get("/metrics", tags=["Health"])
+def system_metrics():
+    from backend.core.metrics import metrics
+    return metrics.snapshot()
 
 
 @app.websocket("/ws/{user_id}")

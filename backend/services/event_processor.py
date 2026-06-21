@@ -47,6 +47,7 @@ import json
 from backend.services.trust_pipeline import TrustPipeline, PipelineContext, TrustUpdate
 from backend.services.baseline_service import BaselineService
 from backend.services.feature_engineering import FeatureEngineer
+from backend.services.cache_service import CacheService
 
 
 # Audit log directory
@@ -201,6 +202,7 @@ class EventProcessor:
         self._feature_engineer = FeatureEngineer()
         self._alert_engine = AlertEngine()
         self._audit_logger = AuditLogger()
+        self._cache = CacheService()
 
         # Active pipeline contexts: user_id → PipelineContext
         self._contexts: Dict[str, PipelineContext] = {}
@@ -224,6 +226,13 @@ class EventProcessor:
         self._session_ids[user_id] = session_id
         self._session_alerts[user_id] = []
 
+        self._cache.set_session_state(user_id, {
+            "session_id": session_id,
+            "has_baseline": baseline is not None,
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "event_count": 0,
+        })
+
         return {
             "user_id": user_id,
             "session_id": session_id,
@@ -236,6 +245,9 @@ class EventProcessor:
         ctx = self._contexts.pop(user_id, None)
         session_id = self._session_ids.pop(user_id, "unknown")
         alerts = self._session_alerts.pop(user_id, [])
+
+        self._cache.delete_session_state(user_id)
+        self._cache.flush_user(user_id)
 
         if ctx is None:
             return {"status": "not_found"}
@@ -340,28 +352,35 @@ class EventProcessor:
         This is the API CONTRACT — every frontend (SDK, dashboard, monitoring)
         consumes this exact format.
         """
-        return {
+        response = {
             "type": "trust_update",
             "user_id": user_id,
             "session_id": self._session_ids.get(user_id, ""),
             "timestamp": result.timestamp,
 
-            # Core verdict (what the bank cares about)
             "trust_score": round(result.trust_score, 4),
             "effective_trust": round(result.effective_trust, 4),
             "decision": result.decision,
             "trust_level": result.trust_level,
 
-            # Behavioral analysis
             "similarity": round(result.similarity, 4),
             "cognitive_state": result.cognitive_state,
             "cognitive_stability": result.cognitive_stability,
 
-            # Drift detection
             "drift_detected": result.drift_detected,
             "drift_severity": result.drift_severity,
 
-            # Temporal dynamics (impressive for judges)
+            "anomaly": {
+                "score": round(result.anomaly_score, 4),
+                "is_anomaly": result.is_anomaly,
+            },
+
+            "fraud": {
+                "probability": round(result.fraud_probability, 4),
+                "trajectory": result.fraud_trajectory,
+                "intent_vector": result.intent_vector,
+            },
+
             "temporal": {
                 "velocity": round(result.velocity, 6),
                 "acceleration": round(result.acceleration, 6),
@@ -369,18 +388,28 @@ class EventProcessor:
                 "entropy": round(result.entropy, 4),
             },
 
-            # Decision reasoning (compliance)
             "reasons": result.reasons,
             "explanation": result.explanation,
 
-            # Alerts
             "alerts": alerts,
 
-            # Metadata
             "event_number": result.event_number,
             "latency_ms": round(result.latency_ms, 1),
             "confidence": round(result.confidence, 4),
         }
+
+        self._cache.set_trust_score(user_id, {
+            "trust_score": response["trust_score"],
+            "decision": response["decision"],
+            "cognitive_state": response["cognitive_state"],
+            "fraud_probability": response["fraud"]["probability"],
+        })
+
+        if alerts:
+            for alert in alerts:
+                self._cache.push_alert(user_id, alert)
+
+        return response
 
     # ═══════════════════════════════════════════════════════════════════════
     # QUERIES (for dashboard/API)
