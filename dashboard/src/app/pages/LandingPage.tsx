@@ -13,6 +13,7 @@ import GradientText from '../components/GradientText'
 import FlipWords from '../components/FlipWords'
 import RippleGrid from '../components/RippleGrid'
 import TrustDonut from '../components/TrustDonut'
+import MagicRings from '../components/MagicRings'
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate()
@@ -25,17 +26,42 @@ const LandingPage: React.FC = () => {
   }, [])
 
   return (
-    <div style={{ background: 'var(--bg-page)', minHeight: '100vh', color: 'var(--text-main)', fontFamily: 'Inter, sans-serif', overflowX: 'hidden' }}>
+    <div style={{ background: 'var(--bg-page)', minHeight: '100vh', color: 'var(--text-main)', fontFamily: 'Inter, sans-serif', overflowX: 'hidden', position: 'relative' }}>
+      {/* MagicRings — WebGL shader rings follow cursor on landing page */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'auto' }}>
+        <MagicRings
+          color="#10B981"
+          colorTwo="#06B6D4"
+          ringCount={6}
+          speed={0.8}
+          attenuation={12}
+          lineThickness={1.8}
+          baseRadius={0.3}
+          radiusStep={0.09}
+          scaleRate={0.08}
+          opacity={0.7}
+          noiseAmount={0.05}
+          rotation={0}
+          ringGap={1.5}
+          fadeIn={0.7}
+          fadeOut={0.5}
+          followMouse={true}
+          mouseInfluence={0.25}
+          hoverScale={1.15}
+          parallax={0.04}
+          clickBurst={true}
+        />
+      </div>
 
       {/* ── NAVBAR — MediaGuard floating pill (no dropdowns) ── */}
       <motion.nav
         initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, display: 'flex', justifyContent: 'center', paddingTop: 20 }}
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, display: 'flex', justifyContent: 'center', paddingTop: 20, pointerEvents: 'none' }}
       >
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 4,
+          display: 'flex', alignItems: 'center', gap: 4, pointerEvents: 'auto',
           backdropFilter: 'blur(16px)', borderRadius: 999, padding: '8px 12px',
           background: scrolled ? 'rgba(10,13,20,0.92)' : 'rgba(10,13,20,0.5)',
           border: scrolled ? '1px solid rgba(16,185,129,0.2)' : '1px solid rgba(255,255,255,0.05)',
@@ -67,7 +93,7 @@ const LandingPage: React.FC = () => {
       </motion.nav>
 
       {/* ── HERO — with RippleGrid + FlipWords ── */}
-      <section style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', paddingTop: 80, position: 'relative', overflow: 'hidden' }}>
+      <section style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', paddingTop: 80, position: 'relative', overflow: 'hidden', zIndex: 1 }}>
         <RippleGrid rows={12} cols={26} cellSize={56} />
         <div style={{ position: 'absolute', top: '15%', left: '8%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%)', filter: 'blur(40px)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: '10%', right: '15%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 70%)', filter: 'blur(40px)', pointerEvents: 'none' }} />
@@ -149,12 +175,12 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* ── BENTO FEATURES ── */}
-      <section id="features" style={{ padding: '40px 0', background: 'var(--bg-panel, #12151E)' }}>
+      <section id="features" style={{ padding: '40px 0', background: 'var(--bg-panel, #12151E)', position: 'relative', zIndex: 1 }}>
         <BentoFeatures />
       </section>
 
       {/* ── HOW IT WORKS — Stepper + Donut Chart ── */}
-      <section id="pipeline" style={{ padding: '80px 40px', background: 'var(--bg-page)' }}>
+      <section id="pipeline" style={{ padding: '80px 40px', background: 'var(--bg-page)', position: 'relative', zIndex: 1 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 440px', gap: 0, maxWidth: 1360, margin: '0 auto', alignItems: 'start' }}>
           <HowItWorks />
           <motion.div
@@ -170,7 +196,7 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* ── INTERACTIVE DEMO — NxtDevs ChallengeTeaser style ── */}
-      <section id="architecture" style={{ padding: '96px 24px', position: 'relative', overflow: 'hidden', background: 'rgba(0,0,0,0.3)', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <section id="architecture" style={{ padding: '96px 24px', position: 'relative', overflow: 'hidden', background: 'rgba(0,0,0,0.3)', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', zIndex: 1 }}>
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 500, height: 500, background: 'rgba(16,185,129,0.06)', borderRadius: '50%', filter: 'blur(120px)', pointerEvents: 'none' }} />
         <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center' }}>
           <div>
