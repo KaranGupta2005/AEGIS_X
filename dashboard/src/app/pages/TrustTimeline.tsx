@@ -95,12 +95,7 @@ function generateAIResponse(query: string, state: any): Message {
     })
   }
 
-  return {
-    id: `ai_${Date.now()}`,
-    role: 'ai',
-    content: 'AEGIS-X AI · Reasoning complete',
-    cards,
-  }
+  return { id: `ai_${Date.now()}`, role: 'ai', content: 'AEGIS-X AI · Reasoning complete', cards }
 }
 
 const AICardComponent: React.FC<{ card: AICard }> = ({ card }) => {
@@ -185,82 +180,162 @@ const TrustTimeline: React.FC = () => {
     }, 600)
   }
 
-  const data = timeline.map(t => t.trust)
-  const trustColor = trustScore > 85 ? '#10B981' : trustScore > 60 ? '#F59E0B' : '#EF4444'
+  const [activeMetric, setActiveMetric] = useState<string>('trust')
+
+  const metrics: Record<string, { label: string; color: string; icon: React.ReactNode; desc: string; data: number[]; currentValue: string }> = {
+    trust: { label: 'Trust Score', color: '#10B981', icon: <Shield size={18} />, desc: 'Real-time behavioral trust T(t)', data: timeline.map(t => t.trust), currentValue: `${trustScore.toFixed(0)}%` },
+    similarity: { label: 'Similarity', color: '#3B82F6', icon: <Fingerprint size={18} />, desc: 'Cosine similarity vs baseline', data: timeline.map(t => t.similarity * 100), currentValue: `${(similarity * 100).toFixed(1)}%` },
+    fraud: { label: 'Fraud Intent', color: '#EF4444', icon: <Target size={18} />, desc: 'ML-predicted fraud probability', data: timeline.map((_, i) => Math.min(100, fraudProbability * 100 + Math.sin(i * 0.5) * 10)), currentValue: `${(fraudProbability * 100).toFixed(0)}%` },
+    anomaly: { label: 'Anomaly', color: '#8B5CF6', icon: <Brain size={18} />, desc: 'Isolation forest anomaly score', data: timeline.map((_, i) => Math.min(100, anomalyScore * 100 + Math.sin(i * 0.7) * 8)), currentValue: `${(anomalyScore * 100).toFixed(0)}%` },
+    entropy: { label: 'Entropy', color: '#F59E0B', icon: <Activity size={18} />, desc: 'Behavioral entropy H(t)', data: timeline.map((_, i) => Math.min(100, entropy * 150 + Math.cos(i * 0.4) * 12)), currentValue: entropy.toFixed(3) },
+  }
+
+  const active = metrics[activeMetric]
+  const data = active.data
+  const trustColor = active.color
 
   const chartOptions: Highcharts.Options = {
-    chart: { type: 'area', backgroundColor: 'transparent', height: 280, margin: [10, 10, 30, 40] },
+    chart: { type: 'area', backgroundColor: '#000000', height: 420, margin: [20, 20, 40, 50], style: { borderRadius: '14px' } },
     title: undefined,
-    xAxis: { visible: false },
+    xAxis: { visible: false, crosshair: { width: 1, color: 'rgba(255,255,255,0.15)' } },
     yAxis: {
       title: { text: '' }, min: 0, max: 100,
-      gridLineColor: 'rgba(255,255,255,0.03)',
-      labels: { style: { color: '#64748B', fontSize: '9px' } },
-      plotBands: [
-        { from: 85, to: 100, color: 'rgba(16,185,129,0.03)' } as any,
-        { from: 60, to: 85, color: 'rgba(245,158,11,0.02)' } as any,
-        { from: 0, to: 60, color: 'rgba(239,68,68,0.02)' } as any,
-      ],
+      gridLineWidth: 0,
+      labels: { style: { color: '#6b7280', fontSize: '10px', fontFamily: 'JetBrains Mono' } },
       plotLines: [
-        { value: 85, color: 'rgba(16,185,129,0.4)', width: 1, dashStyle: 'ShortDash' as any, label: { text: 'ALLOW', style: { color: '#10B981', fontSize: '8px' }, align: 'right' as any } },
-        { value: 60, color: 'rgba(239,68,68,0.4)', width: 1, dashStyle: 'ShortDash' as any, label: { text: 'BLOCK', style: { color: '#EF4444', fontSize: '8px' }, align: 'right' as any } },
+        { value: 85, color: 'rgba(16,185,129,0.2)', width: 1, dashStyle: 'Dash' as any, label: { text: 'ALLOW', align: 'right' as any, style: { color: 'rgba(16,185,129,0.5)', fontSize: '8px', fontFamily: 'JetBrains Mono' } } },
+        { value: 60, color: 'rgba(245,158,11,0.2)', width: 1, dashStyle: 'Dash' as any, label: { text: 'STEP-UP', align: 'right' as any, style: { color: 'rgba(245,158,11,0.5)', fontSize: '8px', fontFamily: 'JetBrains Mono' } } },
+        { value: 40, color: 'rgba(239,68,68,0.2)', width: 1, dashStyle: 'Dash' as any, label: { text: 'BLOCK', align: 'right' as any, style: { color: 'rgba(239,68,68,0.5)', fontSize: '8px', fontFamily: 'JetBrains Mono' } } },
       ],
     },
     legend: { enabled: false },
     credits: { enabled: false },
-    tooltip: { backgroundColor: '#1E293B', borderColor: '#334155', style: { color: '#E2E8F0', fontSize: '10px' }, valueSuffix: '%' },
+    tooltip: { backgroundColor: '#1a1a2e', borderWidth: 0, shadow: false, shape: 'rect' as any, style: { color: '#ffffff', fontSize: '12px', fontFamily: 'Space Grotesk' }, valueSuffix: '%', pointFormat: '<b>{point.y:.1f}%</b>' },
     plotOptions: {
       area: {
-        fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, `${trustColor}30`], [1, `${trustColor}00`]] as any },
-        marker: { enabled: false, states: { hover: { enabled: true, radius: 4 } } },
-        lineWidth: 2.5,
         threshold: null as any,
-        zones: [
-          { value: 60, color: '#EF4444', fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(239,68,68,0.2)'], [1, 'rgba(239,68,68,0)']] } },
-          { value: 85, color: '#F59E0B', fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(245,158,11,0.15)'], [1, 'rgba(245,158,11,0)']] } },
-          { color: '#10B981', fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(16,185,129,0.2)'], [1, 'rgba(16,185,129,0)']] } },
-        ] as any,
-        animation: { duration: 1000 },
+        color: trustColor,
+        fillColor: { linearGradient: [0, 0, 0, 400] as any, stops: [[0, `${trustColor}50`], [0.5, `${trustColor}15`], [1, 'transparent']] as any },
+        lineWidth: 3,
+        marker: { enabled: false, states: { hover: { enabled: true, radius: 5, fillColor: trustColor, lineColor: '#000', lineWidth: 2 } } },
+        animation: { duration: 800 },
       },
     },
-    series: [{ type: 'area' as any, name: 'Trust Score', data }],
+    series: [{ type: 'area' as any, name: active.label, data }],
   }
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 14, height: 'calc(100vh - 100px)' }}>
-      {/* Left: Chart */}
+      {/* Left: Full-width Chart Area */}
       <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <div>
-            <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, fontFamily: 'Space Grotesk', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <TrendingDown size={16} color="#F59E0B" /> Trust Timeline
+            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, fontFamily: 'Space Grotesk', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <TrendingDown size={18} color="#F59E0B" /> Trust Timeline
             </h1>
-            <p style={{ fontSize: 9, color: 'var(--text-muted)', margin: '2px 0 0', fontFamily: 'JetBrains Mono' }}>
-              <Wifi size={9} color={isConnected ? '#10B981' : '#EF4444'} /> Live T(t) — {data.length} observations
+            <p style={{ fontSize: 9, color: 'var(--text-muted)', margin: '3px 0 0', fontFamily: 'JetBrains Mono' }}>
+              <Wifi size={9} color={isConnected ? '#10B981' : '#EF4444'} /> Live T(t) — {timeline.length} observations
             </p>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             {[
-              { label: 'TRUST', value: `${trustScore.toFixed(0)}%`, color: trustColor },
+              { label: 'TRUST', value: `${trustScore.toFixed(0)}%`, color: trustScore > 85 ? '#10B981' : trustScore > 60 ? '#F59E0B' : '#EF4444' },
               { label: 'VELOCITY', value: velocity.toFixed(4), color: velocity < -0.01 ? '#EF4444' : '#10B981' },
               { label: 'ENTROPY', value: entropy.toFixed(3), color: '#8B5CF6' },
             ].map(s => (
-              <div key={s.label} style={{ textAlign: 'center', padding: '4px 10px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: s.color, fontFamily: 'Space Grotesk' }}>{s.value}</div>
+              <div key={s.label} style={{ textAlign: 'center', padding: '6px 12px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: s.color, fontFamily: 'Space Grotesk' }}>{s.value}</div>
                 <div style={{ fontSize: 7, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{s.label}</div>
               </div>
             ))}
           </div>
         </div>
 
-        <div style={{ background: 'var(--bg-card)', borderRadius: 14, border: '1px solid var(--border-light)', padding: 16, flex: 1 }}>
-          {data.length > 0 ? (
-            <HighchartsReact highcharts={Highcharts} options={chartOptions} />
+        {/* Main Chart — full width, maximum height */}
+        <div style={{ background: '#000000', borderRadius: 16, padding: '18px 20px', border: '1px solid rgba(255,255,255,0.06)', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          {/* Chart active metric badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: trustColor, boxShadow: `0 0 10px ${trustColor}80` }} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: trustColor, fontFamily: 'Space Grotesk', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{active.label}</span>
+            <span style={{ fontSize: 24, fontWeight: 900, color: 'var(--text-main)', fontFamily: 'Space Grotesk', marginLeft: 'auto' }}>{active.currentValue}</span>
+          </div>
+
+          {timeline.length > 0 ? (
+            <div style={{ flex: 1, minHeight: 0 }}>
+              <HighchartsReact highcharts={Highcharts} options={chartOptions} containerProps={{ style: { height: '100%' } }} />
+            </div>
           ) : (
-            <div style={{ height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>Waiting for data...</p>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <p style={{ fontSize: 12, color: '#6b7280', fontFamily: 'JetBrains Mono' }}>Waiting for data stream...</p>
             </div>
           )}
+        </div>
+
+        {/* NxtDevs-style Metric Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginTop: 14 }}>
+          {Object.entries(metrics).map(([key, m], i) => (
+            <motion.div
+              key={key}
+              onClick={() => setActiveMetric(key)}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.06, duration: 0.4 }}
+              whileHover={{ y: -4, scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              style={{
+                position: 'relative',
+                cursor: 'pointer',
+                background: activeMetric === key
+                  ? `linear-gradient(135deg, ${m.color}12, ${m.color}06)`
+                  : 'var(--bg-card)',
+                borderRadius: 14,
+                padding: '16px 14px',
+                border: activeMetric === key
+                  ? `1.5px solid ${m.color}50`
+                  : '1px solid var(--border-light)',
+                overflow: 'hidden',
+                transition: 'border-color 0.2s, background 0.2s',
+                boxShadow: activeMetric === key ? `0 4px 20px ${m.color}15, 0 0 0 1px ${m.color}10` : 'none',
+              }}
+            >
+              {/* Glow background */}
+              <div style={{
+                position: 'absolute', top: -30, right: -30, width: 80, height: 80, borderRadius: '50%',
+                background: activeMetric === key ? m.color : 'transparent',
+                opacity: 0.08, filter: 'blur(25px)', pointerEvents: 'none', transition: 'opacity 0.3s',
+              }} />
+              {/* Icon */}
+              <div style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: `${m.color}${activeMetric === key ? '20' : '08'}`,
+                border: `1px solid ${m.color}${activeMetric === key ? '40' : '15'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: m.color, marginBottom: 10, transition: 'all 0.2s',
+              }}>
+                {m.icon}
+              </div>
+              {/* Label */}
+              <div style={{ fontSize: 10, fontWeight: 700, color: activeMetric === key ? m.color : 'var(--text-muted)', fontFamily: 'JetBrains Mono', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3, transition: 'color 0.2s' }}>
+                {m.label}
+              </div>
+              {/* Value */}
+              <div style={{ fontSize: 18, fontWeight: 900, color: activeMetric === key ? 'var(--text-main)' : 'var(--text-sub)', fontFamily: 'Space Grotesk', transition: 'color 0.2s' }}>
+                {m.currentValue}
+              </div>
+              {/* Description */}
+              <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.3 }}>
+                {m.desc}
+              </div>
+              {/* Active indicator line */}
+              {activeMetric === key && (
+                <motion.div
+                  layoutId="metricIndicator"
+                  style={{ position: 'absolute', bottom: 0, left: '20%', right: '20%', height: 3, borderRadius: '3px 3px 0 0', background: m.color }}
+                />
+              )}
+            </motion.div>
+          ))}
         </div>
       </div>
 

@@ -4,12 +4,13 @@ import { motion, AnimatePresence } from 'motion/react'
 import {
   Radio, TrendingDown, Brain, FileWarning, RotateCcw,
   PanelLeftClose, PanelLeftOpen, Shield, LogOut, Settings, HelpCircle,
-  ChevronLeft, ChevronRight, Wifi, WifiOff,
+  ChevronLeft, ChevronRight, Wifi, WifiOff, CreditCard,
 } from 'lucide-react'
 import { logout, getUsername } from '../../services/auth'
 import { useStore } from '../../services/store'
 
 const navItems = [
+  { id: 'demo',      label: 'Live Demo',         icon: CreditCard,   color: '#10B981', path: '/app/demo'      },
   { id: 'monitor',   label: 'Live Monitor',      icon: Radio,        color: '#10B981', path: '/app/monitor'   },
   { id: 'timeline',  label: 'Trust Timeline',    icon: TrendingDown, color: '#3B82F6', path: '/app/timeline'  },
   { id: 'cognitive', label: 'Cognitive Analysis', icon: Brain,        color: '#8B5CF6', path: '/app/cognitive' },
