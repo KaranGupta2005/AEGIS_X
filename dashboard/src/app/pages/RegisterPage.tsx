@@ -12,6 +12,11 @@ export default function RegisterPage() {
     const [success, setSuccess] = useState(false);
     const [formData, setFormData] = useState({ username: "", email: "", password: "", confirmPassword: "" });
 
+    // Force dark theme on register page
+    useState(() => {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    });
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);

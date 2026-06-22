@@ -1,6 +1,10 @@
 import { useEffect, useRef } from 'react'
 
-const WS_BASE = `ws://${window.location.hostname}:8000`
+const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+const WS_HOST = import.meta.env.VITE_BACKEND_URL
+  ? new URL(import.meta.env.VITE_BACKEND_URL).host
+  : `${window.location.hostname}:8000`
+const WS_BASE = `${WS_PROTOCOL}//${WS_HOST}`
 
 interface SDKFeatures {
   typing_speed_cps: number

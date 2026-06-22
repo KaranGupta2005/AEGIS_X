@@ -4,18 +4,19 @@ import { motion, AnimatePresence } from 'motion/react'
 import {
   Radio, TrendingDown, Brain, FileWarning, RotateCcw,
   PanelLeftClose, PanelLeftOpen, Shield, LogOut, Settings, HelpCircle,
-  ChevronLeft, ChevronRight, Wifi, WifiOff, CreditCard,
+  ChevronLeft, ChevronRight, Wifi, WifiOff, CreditCard, Sun, Moon,
 } from 'lucide-react'
 import { logout, getUsername } from '../../services/auth'
 import { useStore } from '../../services/store'
+import { useTheme } from '../../services/useTheme'
 
 const navItems = [
-  { id: 'demo',      label: 'Live Demo',         icon: CreditCard,   color: '#10B981', path: '/app/demo'      },
-  { id: 'monitor',   label: 'Live Monitor',      icon: Radio,        color: '#10B981', path: '/app/monitor'   },
-  { id: 'timeline',  label: 'Trust Timeline',    icon: TrendingDown, color: '#3B82F6', path: '/app/timeline'  },
-  { id: 'cognitive', label: 'Cognitive Analysis', icon: Brain,        color: '#8B5CF6', path: '/app/cognitive' },
-  { id: 'incident',  label: 'Incident Explorer', icon: FileWarning,  color: '#F59E0B', path: '/app/incident'  },
-  { id: 'replay',    label: 'Session Replay',    icon: RotateCcw,    color: '#EF4444', path: '/app/replay'    },
+  { id: 'demo',      label: 'Live Demo',         icon: CreditCard,   color: 'var(--accent)',        path: '/app/demo'      },
+  { id: 'monitor',   label: 'Live Monitor',      icon: Radio,        color: 'var(--accent)',        path: '/app/monitor'   },
+  { id: 'timeline',  label: 'Trust Timeline',    icon: TrendingDown, color: 'var(--accent-blue)',   path: '/app/timeline'  },
+  { id: 'cognitive', label: 'Cognitive Analysis', icon: Brain,        color: 'var(--accent-purple)', path: '/app/cognitive' },
+  { id: 'incident',  label: 'Incident Explorer', icon: FileWarning,  color: 'var(--accent-warn)',   path: '/app/incident'  },
+  { id: 'replay',    label: 'Session Replay',    icon: RotateCcw,    color: 'var(--accent-danger)', path: '/app/replay'    },
 ]
 
 interface SidebarProps {
@@ -26,6 +27,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
   const location = useLocation()
   const { state } = useStore()
+  const { theme, toggle: toggleTheme, isDark } = useTheme()
   const W = collapsed ? 68 : 256
 
   return (
@@ -135,7 +137,12 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
       <div style={{ padding: collapsed ? '10px 8px' : '10px 10px', borderTop: '1px solid var(--border-light)' }}>
         {collapsed ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-            <div title={state.isConnected ? 'Pipeline Online' : 'Disconnected'} style={{ width: 8, height: 8, borderRadius: '50%', background: state.isConnected ? '#10B981' : '#EF4444', boxShadow: state.isConnected ? '0 0 6px #10B981' : '0 0 6px #EF4444' }} />
+            <button onClick={toggleTheme} title={isDark ? 'Switch to Light' : 'Switch to Dark'} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)' }}>
+              {isDark ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+            <div title={state.isConnected ? 'Pipeline Online' : 'Disconnected'} style={{ width: 8, height: 8, borderRadius: '50%', background: state.isConnected ? '#16A34A' : '#EF4444', boxShadow: state.isConnected ? '0 0 6px #16A34A' : '0 0 6px #EF4444' }} />
             <button onClick={() => logout()} title="Sign out" style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}
               onMouseEnter={e => { e.currentTarget.style.color = '#EF4444' }}
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)' }}>
@@ -144,9 +151,18 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
           </div>
         ) : (
           <>
-            <div style={{ borderRadius: 12, padding: '11px 13px', marginBottom: 8, background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.08)' }}>
+            {/* Theme toggle */}
+            <button onClick={toggleTheme} style={{ width: '100%', padding: '8px 13px', borderRadius: 10, border: '1px solid var(--border-light)', background: 'var(--bg-page)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, transition: 'all 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-light)' }}>
+              {isDark ? <Sun size={14} style={{ color: '#F59E0B' }} /> : <Moon size={14} style={{ color: 'var(--accent-blue)' }} />}
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-sub)', fontFamily: 'JetBrains Mono, monospace' }}>
+                {isDark ? 'Light Mode' : 'Dark Mode'}
+              </span>
+            </button>
+            <div style={{ borderRadius: 12, padding: '11px 13px', marginBottom: 8, background: 'var(--accent-dim)', border: '1px solid var(--border-light)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7 }}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: state.isConnected ? '#10B981' : '#EF4444', animation: state.isConnected ? 'pulse 1.5s ease-in-out infinite' : 'none' }} />
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: state.isConnected ? '#16A34A' : '#EF4444', animation: state.isConnected ? 'pulse 1.5s ease-in-out infinite' : 'none' }} />
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-main)', fontFamily: 'JetBrains Mono, monospace' }}>
                   {state.isConnected ? 'Pipeline Active' : 'Disconnected'}
                 </span>
@@ -157,11 +173,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
               ].map(({ label, ok }) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>{label}</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: ok ? '#10B981' : '#EF4444', fontFamily: 'JetBrains Mono, monospace' }}>{ok ? 'Online' : 'Offline'}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: ok ? '#16A34A' : '#EF4444', fontFamily: 'JetBrains Mono, monospace' }}>{ok ? 'Online' : 'Offline'}</span>
                 </div>
               ))}
-              <div style={{ height: 3, background: 'rgba(255,255,255,0.05)', borderRadius: 99, overflow: 'hidden', marginTop: 5 }}>
-                <div style={{ height: '100%', borderRadius: 99, transition: 'width 0.5s', width: state.isConnected ? '92%' : '0%', background: 'linear-gradient(to right, #10B981, #34D399)' }} />
+              <div style={{ height: 3, background: 'var(--border-light)', borderRadius: 99, overflow: 'hidden', marginTop: 5 }}>
+                <div style={{ height: '100%', borderRadius: 99, transition: 'width 0.5s', width: state.isConnected ? '92%' : '0%', background: isDark ? 'linear-gradient(to right, #10B981, #34D399)' : 'linear-gradient(to right, #8B1A1A, #C41E3A)' }} />
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 4px' }}>

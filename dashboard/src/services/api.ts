@@ -1,5 +1,10 @@
-const API_BASE = '/api/v1'
-const WS_BASE = `ws://${window.location.hostname}:8000`
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || ''
+const API_BASE = `${BACKEND_URL}/api/v1`
+const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+const WS_HOST = import.meta.env.VITE_BACKEND_URL
+  ? new URL(import.meta.env.VITE_BACKEND_URL).host
+  : `${window.location.hostname}:8000`
+const WS_BASE = `${WS_PROTOCOL}//${WS_HOST}`
 
 export interface TrustUpdate {
   type: string

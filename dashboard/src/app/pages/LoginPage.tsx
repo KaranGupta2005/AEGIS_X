@@ -11,6 +11,11 @@ export default function LoginPage() {
     const [error, setError] = useState("");
     const [formData, setFormData] = useState({ email: "", password: "" });
 
+    // Force dark theme on login page
+    useState(() => {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    });
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);

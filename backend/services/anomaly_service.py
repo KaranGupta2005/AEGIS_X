@@ -1,3 +1,13 @@
+"""
+Anomaly Detection using Isolation Forest.
+
+Standard unsupervised anomaly detection:
+- Contamination = 0.05 (5% expected anomaly rate — conservative)
+- n_estimators = 100 (standard for Isolation Forest)
+- Auto-fits after collecting 50 normal samples
+- Returns normalized anomaly_score in [0, 1]
+"""
+
 import numpy as np
 from typing import Dict, Optional
 from sklearn.ensemble import IsolationForest
@@ -19,15 +29,21 @@ class AnomalyService:
         self._is_fitted = False
 
         if MODEL_PATH.exists():
-            self._model = load(MODEL_PATH)
-            self._is_fitted = True
+            try:
+                self._model = load(MODEL_PATH)
+                self._is_fitted = True
+            except Exception:
+                self._model = None
+                self._is_fitted = False
 
     def feed_sample(self, feature_vector: np.ndarray):
-        self._sample_buffer.append(feature_vector)
+        """Add a sample to the buffer. Auto-fits after min_samples collected."""
+        self._sample_buffer.append(feature_vector.copy())
         if len(self._sample_buffer) >= self._min_samples and not self._is_fitted:
             self._fit()
 
     def score_anomaly(self, feature_vector: np.ndarray) -> Dict:
+        """Score a feature vector for anomaly. Returns 0.0 if not fitted yet."""
         if not self._is_fitted or self._model is None:
             return {"anomaly_score": 0.0, "is_anomaly": False, "confidence": 0.0}
 
@@ -35,7 +51,9 @@ class AnomalyService:
         raw_score = self._model.decision_function(sample)[0]
         prediction = self._model.predict(sample)[0]
 
-        anomaly_score = max(0.0, min(1.0, -raw_score / 0.5))
+        # Normalize: raw_score is negative for anomalies, positive for normal
+        # Map to [0, 1] where 1 = highly anomalous
+        anomaly_score = max(0.0, min(1.0, -raw_score * 2.0))
         is_anomaly = bool(prediction == -1)
 
         return {
@@ -46,6 +64,7 @@ class AnomalyService:
         }
 
     def _fit(self):
+        """Fit the Isolation Forest on collected normal samples."""
         X = np.array(self._sample_buffer)
         self._model = IsolationForest(
             n_estimators=100,
@@ -55,9 +74,13 @@ class AnomalyService:
         )
         self._model.fit(X)
         self._is_fitted = True
-        dump(self._model, MODEL_PATH)
+        try:
+            dump(self._model, MODEL_PATH)
+        except Exception:
+            pass
 
     def retrain(self, normal_samples: np.ndarray):
+        """Retrain on provided samples."""
         self._model = IsolationForest(
             n_estimators=100,
             contamination=0.05,
@@ -66,7 +89,10 @@ class AnomalyService:
         )
         self._model.fit(normal_samples)
         self._is_fitted = True
-        dump(self._model, MODEL_PATH)
+        try:
+            dump(self._model, MODEL_PATH)
+        except Exception:
+            pass
 
     @property
     def is_ready(self) -> bool:

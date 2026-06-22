@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Outlet, Navigate } from 'react-router'
 import Sidebar from './Sidebar'
 import { StoreProvider } from '../../services/StoreProvider'
@@ -6,6 +6,12 @@ import { isAuthenticated } from '../../services/auth'
 
 const ProtectedLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false)
+
+  // Restore user's saved theme when entering the app
+  useEffect(() => {
+    const saved = localStorage.getItem('aegisx-theme') || 'light'
+    document.documentElement.setAttribute('data-theme', saved)
+  }, [])
 
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />
@@ -19,11 +25,6 @@ const ProtectedLayout: React.FC = () => {
           flex: 1, overflow: 'auto', padding: '28px 36px', minWidth: 0,
           background: 'var(--bg-page)', position: 'relative',
         }}>
-          <div style={{
-            position: 'fixed', top: 0, left: collapsed ? 68 : 252, width: 500, height: 500,
-            borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.03) 0%, transparent 70%)',
-            pointerEvents: 'none', filter: 'blur(40px)', zIndex: 0,
-          }} />
           <div style={{ position: 'relative', zIndex: 1, maxWidth: 1400 }}>
             <Outlet />
           </div>

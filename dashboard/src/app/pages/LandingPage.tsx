@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { motion } from 'motion/react'
 import {
   ArrowRight, Shield, Radio,
-  ChevronRight, Sparkles, CheckCircle,
+  ChevronRight, Sparkles, CheckCircle, Sun, Moon,
 } from 'lucide-react'
 import CardSwap, { Card } from '../components/CardSwap'
 import { Card1, Card2, Card3, Card4, Card5 } from '../components/LandingCards'
@@ -19,6 +19,25 @@ import { isAuthenticated, getUsername } from '../../services/auth'
 const LandingPage: React.FC = () => {
   const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
+  const [isDark, setIsDark] = useState(true)
+
+  useEffect(() => {
+    // Force dark theme on landing page
+    const prev = document.documentElement.getAttribute('data-theme')
+    document.documentElement.setAttribute('data-theme', 'dark')
+    return () => {
+      // Restore user's chosen theme when leaving
+      const saved = localStorage.getItem('aegisx-theme') || 'light'
+      document.documentElement.setAttribute('data-theme', saved)
+    }
+  }, [])
+
+  const toggleTheme = () => {
+    const next = isDark ? 'light' : 'dark'
+    setIsDark(!isDark)
+    document.documentElement.setAttribute('data-theme', next)
+    localStorage.setItem('aegisx-theme', next)
+  }
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 24)
@@ -87,6 +106,12 @@ const LandingPage: React.FC = () => {
             </button>
           ))}
           <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+          <button onClick={toggleTheme} title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            style={{ width: 32, height: 32, borderRadius: 999, border: 'none', background: 'rgba(255,255,255,0.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}>
+            {isDark ? <Sun size={14} color="#F59E0B" /> : <Moon size={14} color="#94A3B8" />}
+          </button>
           {isAuthenticated() ? (
             <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }} onClick={() => navigate('/app/monitor')}
               style={{ marginLeft: 4, padding: '8px 20px', background: '#10B981', color: '#0A0D14', fontSize: 11, fontWeight: 800, borderRadius: 999, border: 'none', cursor: 'pointer', boxShadow: '0 0 20px rgba(16,185,129,0.35)', transition: 'all 0.2s' }}>

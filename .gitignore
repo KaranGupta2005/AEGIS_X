@@ -9,11 +9,12 @@ build/
 
 # Environment
 .env
+.env.local
 
 # Data (raw only — synthetic is committed)
 data/raw/
 
-# ML model artifacts (too large for git)
+# ML model artifacts (too large for git — retrained on deploy)
 models/cognitive/cognitive_rf.pkl
 models/**/*.pkl
 models/**/*.pt
@@ -32,6 +33,10 @@ embeddings/baselines/
 .DS_Store
 Thumbs.db
 
-# Node (aegis-dashboard)
-aegis-dashboard/node_modules/
-aegis-dashboard/.next/
+# Node
+node_modules/
+dashboard/node_modules/
+dashboard/dist/
+
+# Logs
+logs/
