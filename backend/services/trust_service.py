@@ -314,9 +314,12 @@ class TransactionScorer:
             reasons.append(f"High transaction amount (₹{amount:,.0f})")
 
         # Beneficiary risk
-        beneficiary_score = 0.6 if is_new_beneficiary else 1.0
+        beneficiary_score = 0.35 if is_new_beneficiary else 1.0
         if is_new_beneficiary:
-            reasons.append("New/unknown beneficiary")
+            reasons.append("New/unknown beneficiary — first-time transfer")
+            if amount > self.AMOUNT_LOW:
+                beneficiary_score = 0.2
+                reasons.append("High-value transfer to unverified account")
 
         # Time risk (2 AM - 5 AM is unusual for banking)
         time_score = self._score_time(hour_of_day)

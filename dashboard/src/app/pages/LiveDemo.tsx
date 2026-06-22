@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useStore } from '../../services/store'
 import { SimulatorScenario } from '../../services/api'
+import { useLiveCapture } from '../../services/useLiveCapture'
 
 const STATE_COLORS: Record<string, string> = {
   calm: '#10B981', focused: '#3B82F6', distressed: '#F59E0B',
@@ -37,6 +38,9 @@ const LiveDemo: React.FC = () => {
   const [balance, setBalance] = useState(245000)
 
   useEffect(() => { if (!isConnected) connect('normal') }, [])
+
+  // Live capture YOUR real keystrokes/mouse and send to backend
+  useLiveCapture('demo_live_real_user', true)
 
   // Watch trust — trigger blocks/stepups mid-flow
   useEffect(() => {
