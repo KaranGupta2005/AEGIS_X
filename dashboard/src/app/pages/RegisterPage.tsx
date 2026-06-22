@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router";
 import { motion } from "motion/react";
 import { Shield, Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
@@ -13,9 +13,13 @@ export default function RegisterPage() {
     const [formData, setFormData] = useState({ username: "", email: "", password: "", confirmPassword: "" });
 
     // Force dark theme on register page
-    useState(() => {
+    useEffect(() => {
         document.documentElement.setAttribute('data-theme', 'dark');
-    });
+        return () => {
+            const saved = localStorage.getItem('aegisx-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', saved);
+        };
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

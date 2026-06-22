@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router";
 import { motion } from "motion/react";
 import { Shield, LogIn, Loader2, ArrowLeft } from "lucide-react";
@@ -12,9 +12,13 @@ export default function LoginPage() {
     const [formData, setFormData] = useState({ email: "", password: "" });
 
     // Force dark theme on login page
-    useState(() => {
+    useEffect(() => {
         document.documentElement.setAttribute('data-theme', 'dark');
-    });
+        return () => {
+            const saved = localStorage.getItem('aegisx-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', saved);
+        };
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
