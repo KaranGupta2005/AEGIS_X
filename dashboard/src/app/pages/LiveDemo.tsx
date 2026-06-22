@@ -1,414 +1,358 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import {
-  CreditCard, Send, Shield, Brain, AlertTriangle, Wifi, WifiOff,
+  CreditCard, Send, Shield, Brain, AlertTriangle, Wifi,
   Fingerprint, Activity, Target, Zap, User, CheckCircle,
-  Lock, Eye, IndianRupee,
+  Lock, ArrowRight, Phone, Bot, UserX,
 } from 'lucide-react'
-
-const WS_URL = `ws://${window.location.hostname}:8000`
+import { useStore } from '../../services/store'
+import { SimulatorScenario } from '../../services/api'
 
 const STATE_COLORS: Record<string, string> = {
   calm: '#10B981', focused: '#3B82F6', distressed: '#F59E0B',
   panicked: '#F97316', coerced: '#EF4444', robotic: '#8B5CF6',
 }
 
-function getTrustColor(score: number) {
-  if (score > 85) return '#10B981'
-  if (score > 60) return '#F59E0B'
-  return '#EF4444'
-}
+function getTrustColor(s: number) { return s > 85 ? '#10B981' : s > 60 ? '#F59E0B' : '#EF4444' }
 
-const BENEFICIARIES = [
-  { name: 'Ravi Sharma', account: 'SBI ••4521', isNew: false },
-  { name: 'Unknown Vendor', account: 'Axis ••9087', isNew: true },
-  { name: 'Priya Mehta', account: 'HDFC ••2234', isNew: false },
-  { name: 'Suspicious Entity', account: 'PNB ••6661', isNew: true },
+type BankScreen = 'dashboard' | 'transfer' | 'amount' | 'confirm' | 'result'
+
+const SCENARIOS = [
+  { key: 'normal' as SimulatorScenario, label: '✅ Normal', desc: 'Genuine user', color: '#10B981', icon: <User size={14} /> },
+  { key: 'scam' as SimulatorScenario, label: '📞 Scam Call', desc: 'Coerced victim', color: '#F59E0B', icon: <Phone size={14} /> },
+  { key: 'malware' as SimulatorScenario, label: '🤖 Malware', desc: 'Remote control', color: '#EF4444', icon: <Bot size={14} /> },
 ]
 
-interface TrustResponse {
-  trust_score: number
-  effective_trust: number
-  decision: string
-  cognitive_state: string
-  similarity: number
-  drift_detected: boolean
-  drift_severity: string
-  anomaly?: { score: number; is_anomaly: boolean }
-  fraud?: { probability: number; trajectory: string; intent_vector: { coercion_probability: number; takeover_probability: number; anomaly_severity: number; robotic_probability: number } }
-  temporal?: { velocity: number; acceleration: number; trend: string; entropy: number }
-  latency_ms: number
-  event_number: number
-  cognitive_stability?: number
-}
-
 const LiveDemo: React.FC = () => {
-  const [wsConnected, setWsConnected] = useState(false)
-  const [trustData, setTrustData] = useState<TrustResponse | null>(null)
-  const [balance, setBalance] = useState(542000)
+  const { state, connect, switchScenario } = useStore()
+  const { trustScore, decision, cognitiveState, similarity, isConnected, velocity, anomalyScore = 0, fraudProbability = 0, latencyMs, eventCount, timeline, driftDetected, intentVector = { coercion_probability: 0, takeover_probability: 0, anomaly_severity: 0, robotic_probability: 0 } } = state
+
+  const [screen, setScreen] = useState<BankScreen>('dashboard')
   const [amount, setAmount] = useState('')
-  const [remarks, setRemarks] = useState('')
-  const [selectedBen, setSelectedBen] = useState(0)
-  const [txStatus, setTxStatus] = useState<'idle' | 'processing' | 'allowed' | 'blocked' | 'stepup'>('idle')
-  const [trustHistory, setTrustHistory] = useState<number[]>([])
-  const [pipelineLog, setPipelineLog] = useState<string[]>([])
+  const [beneficiary, setBeneficiary] = useState('Rahul Sharma')
+  const [activeScenario, setActiveScenario] = useState<SimulatorScenario>('normal')
+  const [blocked, setBlocked] = useState(false)
+  const [stepUpShown, setStepUpShown] = useState(false)
+  const [txSuccess, setTxSuccess] = useState(false)
+  const [balance, setBalance] = useState(245000)
 
-  const wsRef = useRef<WebSocket | null>(null)
-  const keyTimesRef = useRef<number[]>([])
-  const correctionsRef = useRef(0)
-  const totalKeysRef = useRef(0)
-  const pausesRef = useRef(0)
-  const lastKeyRef = useRef(0)
-  const flushIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const amountRef = useRef('')
-  const selectedBenRef = useRef(0)
+  useEffect(() => { if (!isConnected) connect('normal') }, [])
 
-  // Keep refs in sync with state
-  useEffect(() => { amountRef.current = amount }, [amount])
-  useEffect(() => { selectedBenRef.current = selectedBen }, [selectedBen])
-
-  // Connect WebSocket on mount
+  // Watch trust — trigger blocks/stepups mid-flow
   useEffect(() => {
-    const userId = `demo_live_${Date.now()}`
-    const ws = new WebSocket(`${WS_URL}/ws/${userId}`)
-    wsRef.current = ws
-
-    ws.onopen = () => {
-      setWsConnected(true)
-      setPipelineLog(prev => [...prev, `[${new Date().toLocaleTimeString()}] WebSocket connected — session ${userId}`])
-    }
-    ws.onclose = () => setWsConnected(false)
-    ws.onerror = () => setWsConnected(false)
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        if (data.trust_score !== undefined) {
-          setTrustData(data)
-          setTrustHistory(prev => [...prev.slice(-30), data.trust_score * 100])
-          setPipelineLog(prev => [...prev.slice(-20), `[${new Date().toLocaleTimeString()}] Trust: ${(data.trust_score * 100).toFixed(1)}% | State: ${data.cognitive_state} | Decision: ${data.decision} | ${data.latency_ms?.toFixed(0)}ms`])
-        }
-      } catch {}
-    }
-
-    // Flush behavioral features every 2 seconds
-    flushIntervalRef.current = setInterval(() => {
-      if (ws.readyState !== WebSocket.OPEN) return
-      const elapsed = 2
-      const typingSpeed = totalKeysRef.current / Math.max(elapsed, 0.1)
-      const correctionRate = totalKeysRef.current > 0 ? correctionsRef.current / totalKeysRef.current : 0
-      const hesitationRatio = totalKeysRef.current > 0 ? pausesRef.current / totalKeysRef.current : 0
-
-      let keyFlightMean = 150
-      if (keyTimesRef.current.length > 1) {
-        const flights: number[] = []
-        for (let i = 1; i < keyTimesRef.current.length; i++) flights.push(keyTimesRef.current[i] - keyTimesRef.current[i - 1])
-        keyFlightMean = flights.reduce((a, b) => a + b, 0) / flights.length
+    if (screen === 'confirm' || screen === 'amount') {
+      if (trustScore < 60 && !blocked && !txSuccess) {
+        setBlocked(true)
+      } else if (trustScore < 85 && trustScore >= 60 && !stepUpShown && !blocked && !txSuccess) {
+        setStepUpShown(true)
       }
-
-      const features = {
-        typing_speed_cps: Math.min(12, typingSpeed),
-        key_hold_mean_ms: 80 + Math.random() * 40,
-        key_flight_mean_ms: keyFlightMean,
-        typing_burst_ratio: Math.min(1, totalKeysRef.current / 20),
-        correction_rate: correctionRate,
-        pause_frequency: Math.min(1, pausesRef.current / Math.max(totalKeysRef.current, 1)),
-        hesitation_ratio: hesitationRatio,
-        long_pause_count: pausesRef.current,
-        tap_interval_mean_ms: 200 + Math.random() * 100,
-        tap_duration_mean_ms: 100 + Math.random() * 50,
-        swipe_velocity_mean: 1.0 + Math.random() * 0.5,
-        swipe_straightness: 0.8 + Math.random() * 0.15,
-        scroll_speed_mean: Math.random() * 200,
-        scroll_reversals: Math.floor(Math.random() * 2),
-        gyroscope_variance: 0.01 + Math.random() * 0.02,
-        accelerometer_jerk: 0.5 + Math.random() * 1.0,
-      }
-
-      ws.send(JSON.stringify({
-        type: 'behavioral_event',
-        event: features,
-        transaction_amount: Number(amountRef.current) || 0,
-        is_new_beneficiary: BENEFICIARIES[selectedBenRef.current]?.isNew || false,
-      }))
-
-      // Reset counters
-      keyTimesRef.current = []
-      correctionsRef.current = 0
-      totalKeysRef.current = 0
-      pausesRef.current = 0
-    }, 2000)
-
-    return () => {
-      ws.close()
-      if (flushIntervalRef.current) clearInterval(flushIntervalRef.current)
     }
-  }, [])
+  }, [trustScore, screen])
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent | KeyboardEvent) => {
-    const now = performance.now()
-    if (lastKeyRef.current > 0 && now - lastKeyRef.current > 2000) pausesRef.current++
-    if (e.key === 'Backspace') correctionsRef.current++
-    totalKeysRef.current++
-    keyTimesRef.current.push(now)
-    lastKeyRef.current = now
-  }, [])
-
-  // Capture ALL keystrokes on the page (not just inputs)
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => handleKeyDown(e)
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [handleKeyDown])
-
-  // Track mouse movement + scroll for additional behavioral signals
-  const mouseMovesRef = useRef(0)
-  const scrollCountRef = useRef(0)
-  useEffect(() => {
-    const onMouseMove = () => { mouseMovesRef.current++ }
-    const onScroll = () => { scrollCountRef.current++ }
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('scroll', onScroll)
-    return () => {
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('scroll', onScroll)
-    }
-  }, [])
-
-  const handleTransfer = () => {
-    if (!amount) return
-    setTxStatus('processing')
-    setPipelineLog(prev => [...prev, `[${new Date().toLocaleTimeString()}] ⚡ Transfer initiated — ₹${Number(amount).toLocaleString()} to ${BENEFICIARIES[selectedBen].name}`])
-
-    setTimeout(() => {
-      const d = trustData?.decision || 'ALLOW'
-      const ts = (trustData?.trust_score || 0.95) * 100
-      if (d === 'ALLOW' && ts > 80) {
-        setTxStatus('allowed')
-        setBalance(b => b - Number(amount))
-        setPipelineLog(prev => [...prev, `[${new Date().toLocaleTimeString()}] ✅ APPROVED — Trust ${ts.toFixed(0)}%`])
-      } else if (d === 'BLOCK' || ts < 60) {
-        setTxStatus('blocked')
-        setPipelineLog(prev => [...prev, `[${new Date().toLocaleTimeString()}] ⛔ BLOCKED — Trust ${ts.toFixed(0)}%, State: ${trustData?.cognitive_state}`])
-      } else {
-        setTxStatus('stepup')
-        setPipelineLog(prev => [...prev, `[${new Date().toLocaleTimeString()}] ⚠️ STEP-UP — Trust ${ts.toFixed(0)}%`])
-      }
-    }, 1200)
+  const startScenario = (s: SimulatorScenario) => {
+    setActiveScenario(s)
+    switchScenario(s)
+    resetFlow()
   }
 
-  const t = trustData
-  const trustScore = (t?.trust_score || 0.95) * 100
+  const resetFlow = () => {
+    setScreen('dashboard')
+    setAmount('')
+    setBlocked(false)
+    setStepUpShown(false)
+    setTxSuccess(false)
+  }
+
+  const handleConfirm = () => {
+    if (trustScore > 85) {
+      setTxSuccess(true)
+      setBalance(b => b - (Number(amount) || 0))
+      setScreen('result')
+    } else if (trustScore > 60) {
+      setStepUpShown(true)
+    } else {
+      setBlocked(true)
+    }
+  }
+
   const trustColor = getTrustColor(trustScore)
-  const cogState = t?.cognitive_state || 'calm'
-  const ben = BENEFICIARIES[selectedBen]
+  const stateColor = STATE_COLORS[cognitiveState] || '#94A3B8'
 
   return (
-    <div>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, fontFamily: 'Space Grotesk', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CreditCard size={18} color="#10B981" /> Live End-to-End Demo
-          </h1>
-          <p style={{ fontSize: 9, color: 'var(--text-muted)', margin: '2px 0 0', fontFamily: 'JetBrains Mono' }}>
-            {wsConnected ? <><Wifi size={9} color="#10B981" /> Connected — YOUR keystrokes → backend pipeline → live trust score</> : <><WifiOff size={9} color="#EF4444" /> Disconnected — start backend with uvicorn</>}
-          </p>
+    <div style={{ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Scenario Selector */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-main)', fontFamily: 'Space Grotesk' }}>DEMO MODE</span>
+        <div style={{ display: 'flex', gap: 6, flex: 1 }}>
+          {SCENARIOS.map(s => (
+            <motion.button key={s.key} onClick={() => startScenario(s.key)} whileTap={{ scale: 0.96 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8, border: `1px solid ${activeScenario === s.key ? s.color : 'var(--border-light)'}`, background: activeScenario === s.key ? `${s.color}10` : 'transparent', color: activeScenario === s.key ? s.color : 'var(--text-muted)', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'Space Grotesk', transition: 'all 0.15s' }}>
+              {s.icon} {s.label}
+            </motion.button>
+          ))}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8, background: wsConnected ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.06)', border: `1px solid ${wsConnected ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}` }}>
-          <div style={{ width: 7, height: 7, borderRadius: '50%', background: wsConnected ? '#10B981' : '#EF4444', boxShadow: wsConnected ? '0 0 6px #10B981' : 'none' }} />
-          <span style={{ fontSize: 9, fontWeight: 700, color: wsConnected ? '#10B981' : '#EF4444', fontFamily: 'JetBrains Mono' }}>
-            {wsConnected ? `Event #${t?.event_number || 0}` : 'OFFLINE'}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: isConnected ? '#10B981' : '#EF4444', boxShadow: isConnected ? '0 0 6px #10B981' : 'none' }} />
+          <span style={{ fontSize: 8, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>Event #{eventCount}</span>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 12 }}>
-        {/* LEFT: Banking App + Explanation */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Bank Card — Premium Design */}
-          <div style={{ background: 'linear-gradient(145deg, #0c1524 0%, #162032 40%, #1a3045 100%)', borderRadius: 18, padding: '22px 26px', border: '1px solid rgba(16,185,129,0.12)', position: 'relative', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
-            {/* Card background decorations */}
-            <div style={{ position: 'absolute', top: -40, right: -20, width: 140, height: 140, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.08), transparent 70%)', pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', bottom: -30, left: -20, width: 100, height: 100, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.05), transparent 70%)', pointerEvents: 'none' }} />
-            {/* Chip */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-              <div style={{ width: 36, height: 26, borderRadius: 5, background: 'linear-gradient(135deg, #D4AF37, #C5A028)', border: '1px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ width: 20, height: 14, border: '1px solid rgba(0,0,0,0.2)', borderRadius: 2, background: 'linear-gradient(135deg, rgba(255,255,255,0.1), transparent)' }} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Shield size={14} color="#10B981" />
-                <span style={{ fontSize: 8, color: '#10B981', fontFamily: 'JetBrains Mono', fontWeight: 700, letterSpacing: '0.08em' }}>AEGIS-X</span>
-              </div>
-            </div>
-            {/* Card number */}
-            <div style={{ fontSize: 16, fontWeight: 600, color: 'rgba(255,255,255,0.85)', fontFamily: 'JetBrains Mono', letterSpacing: '0.15em', marginBottom: 16 }}>
-              4521 •••• •••• 7890
-            </div>
-            {/* Bottom row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-              <div>
-                <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.35)', fontFamily: 'JetBrains Mono', textTransform: 'uppercase', letterSpacing: '0.12em', display: 'block', marginBottom: 2 }}>Account Holder</span>
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.9)', fontFamily: 'Space Grotesk', fontWeight: 600 }}>DEMO USER</span>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.35)', fontFamily: 'JetBrains Mono', textTransform: 'uppercase', letterSpacing: '0.12em', display: 'block', marginBottom: 2 }}>Available Balance</span>
-                <motion.span key={balance} initial={{ scale: 1.1 }} animate={{ scale: 1 }} style={{ fontSize: 20, color: '#10B981', fontFamily: 'Space Grotesk', fontWeight: 900, display: 'block' }}>₹{balance.toLocaleString()}</motion.span>
-              </div>
-            </div>
-            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', background: 'rgba(16,185,129,0.06)', borderRadius: 6, border: '1px solid rgba(16,185,129,0.1)' }}>
-              <div style={{ width: 5, height: 5, borderRadius: '50%', background: wsConnected ? '#10B981' : '#EF4444', boxShadow: wsConnected ? '0 0 6px #10B981' : 'none' }} />
-              <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', fontFamily: 'JetBrains Mono' }}>CENTRAL BANK OF INDIA · {wsConnected ? 'Protected' : 'Offline'}</span>
-            </div>
+      {/* Split Screen */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 360px', gap: 12, minHeight: 0 }}>
+        {/* LEFT: Banking App */}
+        <div style={{ background: '#080c14', borderRadius: 16, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+          {/* Bank nav */}
+          <div style={{ padding: '12px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'white', fontFamily: 'Space Grotesk' }}>🏦 CBI NetBanking</span>
+            <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono' }}>Session Active</span>
           </div>
 
-          {/* Transfer Form */}
-          <div style={{ background: 'var(--bg-card)', borderRadius: 14, border: '1px solid var(--border-light)', padding: '16px 18px' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-main)', fontFamily: 'Space Grotesk', display: 'block', marginBottom: 12 }}>Fund Transfer</span>
-            <label style={{ fontSize: 8, fontWeight: 700, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', display: 'block', marginBottom: 5 }}>TO</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 12 }}>
-              {BENEFICIARIES.map((b, i) => (
-                <motion.div key={i} onClick={() => setSelectedBen(i)} whileTap={{ scale: 0.97 }}
-                  style={{ padding: '7px 10px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${selectedBen === i ? (b.isNew ? 'rgba(239,68,68,0.4)' : 'rgba(16,185,129,0.4)') : 'var(--border-light)'}`, background: selectedBen === i ? (b.isNew ? 'rgba(239,68,68,0.05)' : 'rgba(16,185,129,0.05)') : 'transparent' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <User size={9} color={b.isNew ? '#EF4444' : '#10B981'} />
-                    <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-main)' }}>{b.name}</span>
-                    {b.isNew && <span style={{ fontSize: 6, padding: '0 3px', borderRadius: 2, background: 'rgba(239,68,68,0.1)', color: '#EF4444', fontWeight: 800 }}>NEW</span>}
+          {/* Bank content */}
+          <div style={{ flex: 1, padding: '20px 24px', overflowY: 'auto' }}>
+            <AnimatePresence mode="wait">
+              {/* Dashboard Screen */}
+              {screen === 'dashboard' && (
+                <motion.div key="dash" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+                  <div style={{ background: 'linear-gradient(135deg, #0c1524, #1a3045)', borderRadius: 14, padding: '18px 22px', marginBottom: 16, border: '1px solid rgba(16,185,129,0.08)' }}>
+                    <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono' }}>SAVINGS ACCOUNT</span>
+                    <div style={{ fontSize: 28, fontWeight: 900, color: '#10B981', fontFamily: 'Space Grotesk', margin: '6px 0' }}>₹{balance.toLocaleString()}</div>
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>A/C •••• 4521 · Central Bank of India</span>
                   </div>
-                  <span style={{ fontSize: 8, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>{b.account}</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <motion.button whileTap={{ scale: 0.97 }} onClick={() => setScreen('transfer')}
+                      style={{ padding: '16px', borderRadius: 12, border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.04)', cursor: 'pointer', textAlign: 'center' }}>
+                      <Send size={18} color="#10B981" style={{ margin: '0 auto 6px' }} />
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'white' }}>Transfer</div>
+                    </motion.button>
+                    <div style={{ padding: '16px', borderRadius: 12, border: '1px solid var(--border-light)', textAlign: 'center', opacity: 0.5 }}>
+                      <CreditCard size={18} color="var(--text-muted)" style={{ margin: '0 auto 6px' }} />
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Pay Bills</div>
+                    </div>
+                  </div>
                 </motion.div>
-              ))}
-            </div>
+              )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-              <div>
-                <label style={{ fontSize: 8, fontWeight: 700, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', display: 'block', marginBottom: 4 }}>AMOUNT</label>
-                <input type="text" value={amount} onChange={e => setAmount(e.target.value.replace(/[^0-9]/g, ''))} onKeyDown={handleKeyDown} placeholder="₹50,000"
-                  style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border-light)', background: 'rgba(255,255,255,0.03)', color: 'var(--text-main)', fontSize: 14, fontWeight: 700, fontFamily: 'Space Grotesk', outline: 'none', boxSizing: 'border-box' }}
-                  onFocus={e => (e.currentTarget.style.borderColor = 'rgba(16,185,129,0.4)')} onBlur={e => (e.currentTarget.style.borderColor = 'var(--border-light)')} />
-              </div>
-              <div>
-                <label style={{ fontSize: 8, fontWeight: 700, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', display: 'block', marginBottom: 4 }}>REMARKS</label>
-                <input type="text" value={remarks} onChange={e => setRemarks(e.target.value)} onKeyDown={handleKeyDown} placeholder="Payment for..."
-                  style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border-light)', background: 'rgba(255,255,255,0.03)', color: 'var(--text-main)', fontSize: 11, fontFamily: 'Inter', outline: 'none', boxSizing: 'border-box' }}
-                  onFocus={e => (e.currentTarget.style.borderColor = 'rgba(16,185,129,0.4)')} onBlur={e => (e.currentTarget.style.borderColor = 'var(--border-light)')} />
-              </div>
-            </div>
+              {/* Transfer Screen */}
+              {screen === 'transfer' && (
+                <motion.div key="transfer" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 16, fontFamily: 'Space Grotesk' }}>Select Beneficiary</h3>
+                  {['Rahul Sharma', 'Priya Mehta', 'Unknown Vendor ⚠️', 'Suspicious Entity ⚠️'].map((name, i) => (
+                    <motion.div key={name} whileTap={{ scale: 0.98 }}
+                      onClick={() => { setBeneficiary(name); setScreen('amount') }}
+                      style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border-light)', marginBottom: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.15s' }}
+                      onMouseEnter={e => (e.currentTarget.style.borderColor = i > 1 ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)')}
+                      onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-light)')}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: i > 1 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <User size={14} color={i > 1 ? '#EF4444' : '#10B981'} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>{name}</div>
+                        <div style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>{i > 1 ? 'NEW BENEFICIARY' : 'Frequent payee'}</div>
+                      </div>
+                      <ArrowRight size={14} color="var(--text-muted)" style={{ marginLeft: 'auto' }} />
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
 
-            <motion.button onClick={handleTransfer} disabled={!amount || txStatus === 'processing'} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
-              style={{ width: '100%', height: 40, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #10B981, #059669)', color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: 'Space Grotesk', opacity: !amount ? 0.5 : 1, boxShadow: '0 4px 14px rgba(16,185,129,0.2)' }}>
-              {txStatus === 'processing' ? <><Activity size={13} /> Verifying...</> : <><Send size={13} /> Transfer ₹{Number(amount || 0).toLocaleString()}</>}
-            </motion.button>
-
-            <AnimatePresence>
-              {txStatus !== 'idle' && txStatus !== 'processing' && (
-                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                  style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: txStatus === 'allowed' ? 'rgba(16,185,129,0.06)' : txStatus === 'blocked' ? 'rgba(239,68,68,0.06)' : 'rgba(245,158,11,0.06)', border: `1px solid ${txStatus === 'allowed' ? 'rgba(16,185,129,0.2)' : txStatus === 'blocked' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {txStatus === 'allowed' ? <CheckCircle size={15} color="#10B981" /> : txStatus === 'blocked' ? <AlertTriangle size={15} color="#EF4444" /> : <Lock size={15} color="#F59E0B" />}
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: txStatus === 'allowed' ? '#10B981' : txStatus === 'blocked' ? '#EF4444' : '#F59E0B', fontFamily: 'Space Grotesk' }}>
-                      {txStatus === 'allowed' ? 'APPROVED' : txStatus === 'blocked' ? 'BLOCKED' : 'STEP-UP REQUIRED'}
-                    </div>
-                    <div style={{ fontSize: 9, color: 'var(--text-sub)', marginTop: 1 }}>
-                      Trust: {trustScore.toFixed(0)}% · State: {cogState} · Latency: {t?.latency_ms?.toFixed(0) || '—'}ms
-                    </div>
+              {/* Amount Screen */}
+              {screen === 'amount' && (
+                <motion.div key="amount" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 4, fontFamily: 'Space Grotesk' }}>Enter Amount</h3>
+                  <p style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 16 }}>To: {beneficiary}</p>
+                  <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                    <span style={{ fontSize: 36, fontWeight: 900, color: 'white', fontFamily: 'Space Grotesk' }}>₹{amount || '0'}</span>
                   </div>
+                  <input type="text" value={amount} onChange={e => setAmount(e.target.value.replace(/[^0-9]/g, ''))} placeholder="Enter amount"
+                    style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border-light)', background: 'rgba(255,255,255,0.03)', color: 'white', fontSize: 16, fontWeight: 700, fontFamily: 'Space Grotesk', outline: 'none', textAlign: 'center', marginBottom: 14, boxSizing: 'border-box' }}
+                    autoFocus />
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                    {['5000', '10000', '50000', '100000'].map(v => (
+                      <button key={v} onClick={() => setAmount(v)} style={{ flex: 1, padding: '8px', borderRadius: 8, border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--text-sub)', fontSize: 10, cursor: 'pointer', fontFamily: 'JetBrains Mono' }}>₹{Number(v).toLocaleString()}</button>
+                    ))}
+                  </div>
+                  <motion.button whileTap={{ scale: 0.97 }} onClick={() => amount && setScreen('confirm')} disabled={!amount}
+                    style={{ width: '100%', height: 44, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#10B981,#059669)', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Space Grotesk', opacity: amount ? 1 : 0.5 }}>
+                    Continue <ArrowRight size={14} style={{ display: 'inline', verticalAlign: 'middle' }} />
+                  </motion.button>
+                </motion.div>
+              )}
+
+              {/* Confirm Screen */}
+              {screen === 'confirm' && (
+                <motion.div key="confirm" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 16, fontFamily: 'Space Grotesk' }}>Confirm Transfer</h3>
+                  <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '14px 16px', border: '1px solid var(--border-light)', marginBottom: 16 }}>
+                    {[
+                      { label: 'To', value: beneficiary },
+                      { label: 'Amount', value: `₹${Number(amount).toLocaleString()}` },
+                      { label: 'From', value: 'Savings A/C ••4521' },
+                      { label: 'Bank', value: 'Central Bank of India' },
+                    ].map(r => (
+                      <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{r.label}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: 'white' }}>{r.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <motion.button whileTap={{ scale: 0.97 }} onClick={handleConfirm}
+                    style={{ width: '100%', height: 44, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#10B981,#059669)', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Space Grotesk', boxShadow: '0 4px 16px rgba(16,185,129,0.2)' }}>
+                    Confirm & Pay ₹{Number(amount).toLocaleString()}
+                  </motion.button>
+                </motion.div>
+              )}
+
+              {/* Result Screen */}
+              {screen === 'result' && txSuccess && (
+                <motion.div key="result" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: 'center', paddingTop: 40 }}>
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', delay: 0.2 }}>
+                    <CheckCircle size={48} color="#10B981" style={{ margin: '0 auto' }} />
+                  </motion.div>
+                  <h3 style={{ fontSize: 18, fontWeight: 800, color: '#10B981', marginTop: 16, fontFamily: 'Space Grotesk' }}>Transfer Successful!</h3>
+                  <p style={{ fontSize: 12, color: 'var(--text-sub)', marginTop: 8 }}>₹{Number(amount).toLocaleString()} sent to {beneficiary}</p>
+                  <p style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 12, fontFamily: 'JetBrains Mono' }}>Verified by AEGIS-X · Trust: {trustScore.toFixed(0)}% · No OTP needed</p>
+                  <button onClick={resetFlow} style={{ marginTop: 20, padding: '8px 20px', borderRadius: 8, border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--text-sub)', fontSize: 11, cursor: 'pointer' }}>Back to Dashboard</button>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* Pipeline Log (terminal) */}
-          <div style={{ background: '#000', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', padding: '10px 12px', maxHeight: 140, overflowY: 'auto' }}>
-            <div style={{ fontSize: 8, fontWeight: 700, color: '#10B981', fontFamily: 'JetBrains Mono', marginBottom: 6 }}>$ aegisx-pipeline --live</div>
-            {pipelineLog.slice(-10).map((line, i) => (
-              <div key={i} style={{ fontSize: 9, color: '#94A3B8', fontFamily: 'JetBrains Mono', lineHeight: 1.6, opacity: 0.5 + (i / 10) * 0.5 }}>{line}</div>
-            ))}
-            {pipelineLog.length === 0 && <div style={{ fontSize: 9, color: '#475569', fontFamily: 'JetBrains Mono' }}>Waiting for behavioral events...</div>}
-          </div>
+          {/* BLOCK Overlay */}
+          <AnimatePresence>
+            {blocked && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(4px)' }}>
+                <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 16, padding: '28px 32px', textAlign: 'center', maxWidth: 320 }}>
+                  <AlertTriangle size={36} color="#EF4444" style={{ margin: '0 auto 12px' }} />
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: '#EF4444', fontFamily: 'Space Grotesk' }}>Transaction Blocked</h3>
+                  <p style={{ fontSize: 11, color: 'var(--text-sub)', marginTop: 8, lineHeight: 1.6 }}>
+                    {cognitiveState === 'coerced' ? 'Potential Social Engineering Detected. Your behavioral pattern indicates you may be under external pressure.' :
+                     cognitiveState === 'robotic' ? 'Automated Activity Detected. Non-human behavioral pattern identified.' :
+                     'Anomalous behavior detected. Transaction paused for your safety.'}
+                  </p>
+                  <p style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 8, fontFamily: 'JetBrains Mono' }}>Trust: {trustScore.toFixed(0)}% · State: {cognitiveState.toUpperCase()}</p>
+                  <button onClick={resetFlow} style={{ marginTop: 16, padding: '8px 20px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#EF4444', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Close</button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* STEP-UP Overlay */}
+          <AnimatePresence>
+            {stepUpShown && !blocked && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(3px)' }}>
+                <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 16, padding: '28px 32px', textAlign: 'center', maxWidth: 300 }}>
+                  <Lock size={32} color="#F59E0B" style={{ margin: '0 auto 12px' }} />
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: '#F59E0B', fontFamily: 'Space Grotesk' }}>Additional Verification Required</h3>
+                  <p style={{ fontSize: 11, color: 'var(--text-sub)', marginTop: 8, lineHeight: 1.5 }}>Your trust score dropped below threshold. Please verify with OTP.</p>
+                  <p style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 6, fontFamily: 'JetBrains Mono' }}>Trust: {trustScore.toFixed(0)}% · Threshold: 85%</p>
+                  <button onClick={() => setStepUpShown(false)} style={{ marginTop: 14, padding: '8px 20px', borderRadius: 8, border: 'none', background: '#F59E0B', color: '#000', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Verify OTP</button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Floating Trust Widget */}
+          <motion.div animate={{ borderColor: trustScore > 85 ? 'rgba(16,185,129,0.3)' : trustScore > 60 ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)' }}
+            style={{ position: 'absolute', top: 52, right: 12, padding: '8px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', border: '1px solid', zIndex: 50 }}>
+            <div style={{ fontSize: 18, fontWeight: 900, color: trustColor, fontFamily: 'Space Grotesk', textAlign: 'center' }}>{Math.round(trustScore)}%</div>
+            <div style={{ fontSize: 7, color: trustScore > 85 ? '#10B981' : trustScore > 60 ? '#F59E0B' : '#EF4444', fontFamily: 'JetBrains Mono', textAlign: 'center' }}>
+              {trustScore > 85 ? 'Secure Session' : trustScore > 60 ? '⚠ Elevated Risk' : '⛔ DANGER'}
+            </div>
+          </motion.div>
         </div>
 
-        {/* RIGHT: Live Trust + Telemetry */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Trust Gauge */}
-          <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border-light)', padding: '12px', textAlign: 'center' }}>
-            <svg width={130} height={72} viewBox="0 0 140 80" style={{ display: 'block', margin: '0 auto' }}>
-              <path d="M 15 70 A 55 55 0 0 1 125 70" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={10} strokeLinecap="round" />
-              {(() => {
-                const pct = Math.max(0, Math.min(100, trustScore)) / 100
-                const angle = Math.PI * (1 - pct)
-                const ex = 70 + 55 * Math.cos(angle), ey = 70 - 55 * Math.sin(angle)
-                return <path d={`M 15 70 A 55 55 0 ${pct > 0.5 ? 1 : 0} 1 ${ex.toFixed(1)} ${ey.toFixed(1)}`} fill="none" stroke={trustColor} strokeWidth={10} strokeLinecap="round" style={{ filter: `drop-shadow(0 0 6px ${trustColor}60)`, transition: 'all 0.4s' }} />
-              })()}
-              <text x={70} y={50} textAnchor="middle" fill={trustColor} fontSize={22} fontWeight={900} fontFamily="Space Grotesk">{Math.round(trustScore)}</text>
-              <text x={70} y={68} textAnchor="middle" fill="#64748B" fontSize={8} fontFamily="JetBrains Mono">LIVE TRUST</text>
-            </svg>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 4 }}>
-              <span style={{ fontSize: 8, padding: '2px 6px', borderRadius: 4, background: `${trustColor}12`, color: trustColor, fontWeight: 800, fontFamily: 'JetBrains Mono' }}>{t?.decision || 'ALLOW'}</span>
-              <span style={{ fontSize: 8, padding: '2px 6px', borderRadius: 4, background: `${STATE_COLORS[cogState]}12`, color: STATE_COLORS[cogState], fontWeight: 800, fontFamily: 'JetBrains Mono' }}>{cogState.toUpperCase()}</span>
-            </div>
+        {/* RIGHT: AEGIS-X Intelligence Panel */}
+        <div style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-light)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Shield size={14} color="#10B981" />
+            <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-main)', fontFamily: 'Space Grotesk' }}>AEGIS-X Intelligence</span>
+            <span style={{ fontSize: 8, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', marginLeft: 'auto' }}>LIVE</span>
           </div>
 
-          {/* State Machine */}
-          <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border-light)', padding: '8px 10px' }}>
-            <span style={{ fontSize: 7, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'JetBrains Mono', display: 'block', marginBottom: 5 }}>Cognitive State Machine</span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-              {Object.entries(STATE_COLORS).map(([s, c]) => (
-                <span key={s} style={{ fontSize: 7, padding: '2px 5px', borderRadius: 3, background: cogState === s ? `${c}20` : 'rgba(255,255,255,0.02)', border: `1px solid ${cogState === s ? c : 'transparent'}`, color: cogState === s ? c : 'var(--text-muted)', fontWeight: cogState === s ? 800 : 400, fontFamily: 'JetBrains Mono', transition: 'all 0.2s' }}>{s}</span>
-              ))}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Trust Score Large */}
+            <div style={{ textAlign: 'center', padding: '10px 0' }}>
+              <motion.div key={Math.round(trustScore)} initial={{ scale: 1.1 }} animate={{ scale: 1 }}
+                style={{ fontSize: 42, fontWeight: 900, color: trustColor, fontFamily: 'Space Grotesk', lineHeight: 1 }}>
+                {Math.round(trustScore)}%
+              </motion.div>
+              <div style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', marginTop: 4 }}>TRUST SCORE T(t)</div>
             </div>
-          </div>
 
-          {/* Live Metrics from Backend */}
-          <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border-light)', padding: '10px 12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-              <Fingerprint size={9} color="#3B82F6" />
-              <span style={{ fontSize: 7, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'JetBrains Mono' }}>Backend Response</span>
-              <div style={{ width: 4, height: 4, borderRadius: '50%', background: wsConnected ? '#10B981' : '#EF4444', marginLeft: 'auto' }} />
-            </div>
-            {[
-              { label: 'Trust Score', value: `${trustScore.toFixed(1)}%`, color: trustColor },
-              { label: 'Similarity', value: `${((t?.similarity || 1) * 100).toFixed(1)}%`, color: (t?.similarity || 1) > 0.85 ? '#10B981' : '#EF4444' },
-              { label: 'Drift', value: t?.drift_detected ? t.drift_severity.toUpperCase() : 'NONE', color: t?.drift_detected ? '#EF4444' : '#10B981' },
-              { label: 'Anomaly', value: `${((t?.anomaly?.score || 0) * 100).toFixed(0)}%`, color: (t?.anomaly?.score || 0) > 0.3 ? '#EF4444' : '#10B981' },
-              { label: 'Fraud', value: `${((t?.fraud?.probability || 0) * 100).toFixed(0)}%`, color: (t?.fraud?.probability || 0) > 0.3 ? '#EF4444' : '#10B981' },
-              { label: 'Velocity', value: t?.temporal?.velocity?.toFixed(4) || '0.0000', color: (t?.temporal?.velocity || 0) < -0.01 ? '#EF4444' : '#10B981' },
-              { label: 'Latency', value: `${t?.latency_ms?.toFixed(0) || '—'}ms`, color: '#8B5CF6' },
-              { label: 'Events', value: String(t?.event_number || 0), color: '#3B82F6' },
-            ].map(m => (
-              <div key={m.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid var(--border-light)' }}>
-                <span style={{ fontSize: 9, color: 'var(--text-sub)' }}>{m.label}</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: m.color, fontFamily: 'Space Grotesk' }}>{m.value}</span>
+            {/* Decision + State */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div style={{ padding: '10px 12px', borderRadius: 10, background: `${decision === 'ALLOW' ? '#10B981' : decision === 'STEP_UP' ? '#F59E0B' : '#EF4444'}08`, border: `1px solid ${decision === 'ALLOW' ? '#10B981' : decision === 'STEP_UP' ? '#F59E0B' : '#EF4444'}20`, textAlign: 'center' }}>
+                <div style={{ fontSize: 8, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>DECISION</div>
+                <div style={{ fontSize: 14, fontWeight: 900, color: decision === 'ALLOW' ? '#10B981' : decision === 'STEP_UP' ? '#F59E0B' : '#EF4444', fontFamily: 'Space Grotesk', marginTop: 2 }}>{decision}</div>
               </div>
-            ))}
-          </div>
-
-          {/* Trust History Mini Bars */}
-          <div style={{ background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border-light)', padding: '8px 10px' }}>
-            <span style={{ fontSize: 7, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'JetBrains Mono', display: 'block', marginBottom: 4 }}>Trust History</span>
-            <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 28 }}>
-              {trustHistory.slice(-20).map((ts, i) => (
-                <div key={i} style={{ flex: 1, height: `${Math.max(4, ts * 0.28)}px`, borderRadius: 1, background: getTrustColor(ts), opacity: 0.4 + (i / 20) * 0.6, transition: 'height 0.3s' }} />
-              ))}
-              {trustHistory.length === 0 && <span style={{ fontSize: 8, color: 'var(--text-muted)', margin: 'auto' }}>waiting...</span>}
+              <div style={{ padding: '10px 12px', borderRadius: 10, background: `${stateColor}08`, border: `1px solid ${stateColor}20`, textAlign: 'center' }}>
+                <div style={{ fontSize: 8, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>STATE</div>
+                <div style={{ fontSize: 14, fontWeight: 900, color: stateColor, fontFamily: 'Space Grotesk', marginTop: 2 }}>{cognitiveState.toUpperCase()}</div>
+              </div>
             </div>
-          </div>
 
-          {/* T(t) Formula */}
-          <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '8px 10px', border: '1px solid rgba(255,255,255,0.04)' }}>
-            <div style={{ fontSize: 7, fontWeight: 700, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', marginBottom: 5, letterSpacing: '0.06em' }}>T(t) = 0.40×Sim + 0.20×Dev + 0.20×Tx + 0.20×Cog</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+            {/* State Machine */}
+            <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+              {Object.entries(STATE_COLORS).map(([s, c]) => (
+                <span key={s} style={{ fontSize: 7, padding: '2px 6px', borderRadius: 4, background: cognitiveState === s ? `${c}20` : 'rgba(255,255,255,0.02)', border: `1px solid ${cognitiveState === s ? c : 'transparent'}`, color: cognitiveState === s ? c : 'var(--text-muted)', fontWeight: cognitiveState === s ? 800 : 400, fontFamily: 'JetBrains Mono', transition: 'all 0.3s' }}>{s}</span>
+              ))}
+            </div>
+
+            {/* Metrics */}
+            <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px 12px', border: '1px solid var(--border-light)' }}>
+              <div style={{ fontSize: 8, fontWeight: 700, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', marginBottom: 6, letterSpacing: '0.1em' }}>BEHAVIORAL SIGNALS</div>
               {[
-                { label: 'Sim', value: ((t?.similarity || 1) * 100).toFixed(0), color: '#10B981' },
-                { label: 'Dev', value: '95', color: '#3B82F6' },
-                { label: 'Tx', value: ben.isNew ? '40' : '90', color: '#F59E0B' },
-                { label: 'Cog', value: ((t?.cognitive_stability || 1) * 100).toFixed(0), color: '#8B5CF6' },
-              ].map(c => (
-                <div key={c.label} style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: c.color, fontFamily: 'Space Grotesk' }}>{c.value}</div>
-                  <div style={{ fontSize: 6, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>{c.label}</div>
+                { label: 'Similarity', value: `${(similarity * 100).toFixed(1)}%`, color: similarity > 0.85 ? '#10B981' : '#EF4444' },
+                { label: 'Drift', value: driftDetected ? 'DETECTED' : 'None', color: driftDetected ? '#EF4444' : '#10B981' },
+                { label: 'Anomaly', value: `${(anomalyScore * 100).toFixed(0)}%`, color: anomalyScore > 0.3 ? '#EF4444' : '#10B981' },
+                { label: 'Fraud Risk', value: `${(fraudProbability * 100).toFixed(0)}%`, color: fraudProbability > 0.3 ? '#EF4444' : '#10B981' },
+                { label: 'Velocity', value: velocity.toFixed(4), color: velocity < -0.01 ? '#EF4444' : '#10B981' },
+                { label: 'Latency', value: `${latencyMs.toFixed(0)}ms`, color: '#8B5CF6' },
+              ].map(m => (
+                <div key={m.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                  <span style={{ fontSize: 9, color: 'var(--text-sub)' }}>{m.label}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: m.color, fontFamily: 'Space Grotesk' }}>{m.value}</span>
                 </div>
               ))}
+            </div>
+
+            {/* Intent Vector */}
+            <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px 12px', border: '1px solid var(--border-light)' }}>
+              <div style={{ fontSize: 8, fontWeight: 700, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', marginBottom: 6, letterSpacing: '0.1em' }}>FRAUD INTENT</div>
+              {[
+                { label: 'Coercion', value: intentVector.coercion_probability, color: '#EF4444' },
+                { label: 'Takeover', value: intentVector.takeover_probability, color: '#F97316' },
+                { label: 'Robotic', value: intentVector.robotic_probability, color: '#8B5CF6' },
+              ].map(item => (
+                <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <span style={{ fontSize: 9, color: 'var(--text-sub)', width: 55 }}>{item.label}</span>
+                  <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 99, overflow: 'hidden' }}>
+                    <motion.div animate={{ width: `${item.value * 100}%` }} style={{ height: '100%', background: item.color, borderRadius: 99 }} />
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: item.value > 0.4 ? item.color : 'var(--text-muted)', width: 24, textAlign: 'right' }}>{(item.value * 100).toFixed(0)}%</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Trust History Mini */}
+            <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 24 }}>
+              {timeline.slice(-25).map((t, i) => (
+                <div key={i} style={{ flex: 1, height: `${Math.max(3, t.trust * 0.24)}px`, borderRadius: 1, background: getTrustColor(t.trust), opacity: 0.4 + (i / 25) * 0.6 }} />
+              ))}
+            </div>
+
+            {/* Explanation */}
+            <div style={{ background: 'rgba(139,92,246,0.04)', borderRadius: 8, padding: '8px 10px', border: '1px solid rgba(139,92,246,0.1)' }}>
+              <div style={{ fontSize: 8, fontWeight: 700, color: '#8B5CF6', fontFamily: 'JetBrains Mono', marginBottom: 4 }}>WHY THIS DECISION?</div>
+              <p style={{ fontSize: 10, color: 'var(--text-sub)', lineHeight: 1.5, margin: 0 }}>
+                {trustScore > 85 ? 'Behavioral fingerprint matches baseline. Typing rhythm, navigation flow, and interaction intensity are consistent with the enrolled user. No fraud signals.' :
+                 trustScore > 60 ? `Trust degrading — ${cognitiveState === 'distressed' ? 'elevated hesitation and correction patterns suggest cognitive stress' : cognitiveState === 'panicked' ? 'rapid behavioral changes indicate panic state' : 'behavioral deviation from baseline detected'}. Step-up verification triggered.` :
+                 cognitiveState === 'coerced' ? 'CRITICAL: Dictation pattern detected. Typing speed < 1.5 CPS with zero scroll activity. User appears to be reading instructions from an external party (likely phone scam). Transaction blocked to prevent social engineering fraud.' :
+                 cognitiveState === 'robotic' ? 'CRITICAL: Non-human behavioral pattern. Zero variance in keystroke timing, perfect swipe linearity, no corrections. This indicates remote access malware or screen mirroring. Session terminated.' :
+                 'Trust collapsed below safety threshold. Multiple anomaly signals confirm behavioral identity mismatch. Transaction blocked pending investigation.'}
+              </p>
             </div>
           </div>
         </div>
