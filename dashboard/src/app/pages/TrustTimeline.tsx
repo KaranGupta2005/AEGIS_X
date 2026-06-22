@@ -195,7 +195,7 @@ const TrustTimeline: React.FC = () => {
   const trustColor = active.color
 
   const chartOptions: Highcharts.Options = {
-    chart: { type: 'area', backgroundColor: '#000000', height: 420, margin: [20, 20, 40, 50], style: { borderRadius: '14px' } },
+    chart: { type: 'area', backgroundColor: '#000000', height: 420, margin: [20, 20, 40, 50], style: { borderRadius: 14 } },
     title: undefined,
     xAxis: { visible: false, crosshair: { width: 1, color: 'rgba(255,255,255,0.15)' } },
     yAxis: {
