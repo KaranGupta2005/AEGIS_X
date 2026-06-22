@@ -200,22 +200,39 @@ const LiveDemo: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 12 }}>
         {/* LEFT: Banking App + Explanation */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Bank Card */}
-          <div style={{ background: 'linear-gradient(135deg, #0F2027, #203A43, #2C5364)', borderRadius: 16, padding: '18px 22px', border: '1px solid rgba(255,255,255,0.08)', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: -30, right: -30, width: 100, height: 100, borderRadius: '50%', background: 'rgba(16,185,129,0.06)', filter: 'blur(20px)' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div>
-                <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono', letterSpacing: '0.12em' }}>CENTRAL BANK OF INDIA</span>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'white', fontFamily: 'Space Grotesk', marginTop: 2 }}>•••• •••• •••• 4521</div>
+          {/* Bank Card — Premium Design */}
+          <div style={{ background: 'linear-gradient(145deg, #0c1524 0%, #162032 40%, #1a3045 100%)', borderRadius: 18, padding: '22px 26px', border: '1px solid rgba(16,185,129,0.12)', position: 'relative', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+            {/* Card background decorations */}
+            <div style={{ position: 'absolute', top: -40, right: -20, width: 140, height: 140, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.08), transparent 70%)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', bottom: -30, left: -20, width: 100, height: 100, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.05), transparent 70%)', pointerEvents: 'none' }} />
+            {/* Chip */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div style={{ width: 36, height: 26, borderRadius: 5, background: 'linear-gradient(135deg, #D4AF37, #C5A028)', border: '1px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 20, height: 14, border: '1px solid rgba(0,0,0,0.2)', borderRadius: 2, background: 'linear-gradient(135deg, rgba(255,255,255,0.1), transparent)' }} />
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono' }}>AVAILABLE</span>
-                <div style={{ fontSize: 18, color: '#10B981', fontFamily: 'Space Grotesk', fontWeight: 900 }}>₹{balance.toLocaleString()}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Shield size={14} color="#10B981" />
+                <span style={{ fontSize: 8, color: '#10B981', fontFamily: 'JetBrains Mono', fontWeight: 700, letterSpacing: '0.08em' }}>AEGIS-X</span>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Shield size={12} color="rgba(16,185,129,0.5)" />
-              <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono' }}>AEGIS-X Protected</span>
+            {/* Card number */}
+            <div style={{ fontSize: 16, fontWeight: 600, color: 'rgba(255,255,255,0.85)', fontFamily: 'JetBrains Mono', letterSpacing: '0.15em', marginBottom: 16 }}>
+              4521 •••• •••• 7890
+            </div>
+            {/* Bottom row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <div>
+                <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.35)', fontFamily: 'JetBrains Mono', textTransform: 'uppercase', letterSpacing: '0.12em', display: 'block', marginBottom: 2 }}>Account Holder</span>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.9)', fontFamily: 'Space Grotesk', fontWeight: 600 }}>DEMO USER</span>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.35)', fontFamily: 'JetBrains Mono', textTransform: 'uppercase', letterSpacing: '0.12em', display: 'block', marginBottom: 2 }}>Available Balance</span>
+                <motion.span key={balance} initial={{ scale: 1.1 }} animate={{ scale: 1 }} style={{ fontSize: 20, color: '#10B981', fontFamily: 'Space Grotesk', fontWeight: 900, display: 'block' }}>₹{balance.toLocaleString()}</motion.span>
+              </div>
+            </div>
+            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', background: 'rgba(16,185,129,0.06)', borderRadius: 6, border: '1px solid rgba(16,185,129,0.1)' }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: wsConnected ? '#10B981' : '#EF4444', boxShadow: wsConnected ? '0 0 6px #10B981' : 'none' }} />
+              <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', fontFamily: 'JetBrains Mono' }}>CENTRAL BANK OF INDIA · {wsConnected ? 'Protected' : 'Offline'}</span>
             </div>
           </div>
 
