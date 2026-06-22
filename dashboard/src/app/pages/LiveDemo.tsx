@@ -60,6 +60,12 @@ const LiveDemo: React.FC = () => {
   const pausesRef = useRef(0)
   const lastKeyRef = useRef(0)
   const flushIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const amountRef = useRef('')
+  const selectedBenRef = useRef(0)
+
+  // Keep refs in sync with state
+  useEffect(() => { amountRef.current = amount }, [amount])
+  useEffect(() => { selectedBenRef.current = selectedBen }, [selectedBen])
 
   // Connect WebSocket on mount
   useEffect(() => {
@@ -88,7 +94,6 @@ const LiveDemo: React.FC = () => {
     // Flush behavioral features every 2 seconds
     flushIntervalRef.current = setInterval(() => {
       if (ws.readyState !== WebSocket.OPEN) return
-      const now = performance.now()
       const elapsed = 2
       const typingSpeed = totalKeysRef.current / Math.max(elapsed, 0.1)
       const correctionRate = totalKeysRef.current > 0 ? correctionsRef.current / totalKeysRef.current : 0
@@ -123,8 +128,8 @@ const LiveDemo: React.FC = () => {
       ws.send(JSON.stringify({
         type: 'behavioral_event',
         event: features,
-        transaction_amount: Number(amount) || 0,
-        is_new_beneficiary: BENEFICIARIES[selectedBen]?.isNew || false,
+        transaction_amount: Number(amountRef.current) || 0,
+        is_new_beneficiary: BENEFICIARIES[selectedBenRef.current]?.isNew || false,
       }))
 
       // Reset counters
@@ -140,13 +145,34 @@ const LiveDemo: React.FC = () => {
     }
   }, [])
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent | KeyboardEvent) => {
     const now = performance.now()
     if (lastKeyRef.current > 0 && now - lastKeyRef.current > 2000) pausesRef.current++
     if (e.key === 'Backspace') correctionsRef.current++
     totalKeysRef.current++
     keyTimesRef.current.push(now)
     lastKeyRef.current = now
+  }, [])
+
+  // Capture ALL keystrokes on the page (not just inputs)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => handleKeyDown(e)
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [handleKeyDown])
+
+  // Track mouse movement + scroll for additional behavioral signals
+  const mouseMovesRef = useRef(0)
+  const scrollCountRef = useRef(0)
+  useEffect(() => {
+    const onMouseMove = () => { mouseMovesRef.current++ }
+    const onScroll = () => { scrollCountRef.current++ }
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('scroll', onScroll)
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('scroll', onScroll)
+    }
   }, [])
 
   const handleTransfer = () => {
