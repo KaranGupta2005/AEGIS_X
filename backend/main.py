@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from typing import Optional
 import json
+import asyncio
+import httpx
 
 from backend.websocket.socket_manager import ConnectionManager
 from backend.api.dependencies import get_processor, set_processor
@@ -10,6 +12,21 @@ from backend.core.rate_limiter import RateLimitMiddleware
 
 
 connection_manager = ConnectionManager()
+
+# Self-ping to prevent Render free tier sleep
+async def keep_alive():
+    """Ping self every 10 minutes to prevent Render spin-down."""
+    import os
+    url = os.getenv("RENDER_EXTERNAL_URL", "")
+    if not url:
+        return
+    async with httpx.AsyncClient() as client:
+        while True:
+            try:
+                await client.get(f"{url}/")
+            except Exception:
+                pass
+            await asyncio.sleep(600)  # every 10 minutes
 
 
 @asynccontextmanager
@@ -19,7 +36,10 @@ async def lifespan(app: FastAPI):
     processor = EventProcessor()
     set_processor(processor)
     print("[AEGIS-X] Trust engine ready.")
+    # Start keep-alive background task
+    task = asyncio.create_task(keep_alive())
     yield
+    task.cancel()
     print("[AEGIS-X] Shutting down.")
 
 

@@ -6,6 +6,11 @@ const WS_HOST = import.meta.env.VITE_BACKEND_URL
   : `${window.location.hostname}:8000`
 const WS_BASE = `${WS_PROTOCOL}//${WS_HOST}`
 
+// Wake up Render backend on page load (free tier sleeps after 15 min)
+if (BACKEND_URL) {
+  fetch(`${BACKEND_URL}/`).catch(() => {})
+}
+
 export interface TrustUpdate {
   type: string
   user_id: string
