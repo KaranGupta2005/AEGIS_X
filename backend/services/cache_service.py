@@ -1,5 +1,6 @@
 import json
 import time
+import numpy as np
 from typing import Dict, Optional, Any, List
 from dataclasses import dataclass, field
 
@@ -25,6 +26,7 @@ class CacheService:
     TRUST_TTL = 10
     BASELINE_TTL = 86400
     ALERT_TTL = 7200
+    PIPELINE_STATE_TTL = 1800  # Pipeline state persists for 30 min (session TTL)
 
     def __init__(self):
         self._redis: Optional[Any] = None
@@ -54,6 +56,10 @@ class CacheService:
     @property
     def is_connected(self) -> bool:
         return self._connected
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # SESSION STATE (existing)
+    # ═══════════════════════════════════════════════════════════════════════
 
     def set_session_state(self, user_id: str, state: Dict) -> bool:
         key = f"aegisx:session:{user_id}"
@@ -144,9 +150,54 @@ class CacheService:
             f"aegisx:session:{user_id}",
             f"aegisx:trust:{user_id}",
             f"aegisx:alerts:{user_id}",
+            f"aegisx:pipeline:{user_id}",
         ]
         for key in patterns:
             self._delete(key)
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # FIX #9: PIPELINE STATE PERSISTENCE
+    # Serialize full pipeline state (CUSUM, similarity history, trust history,
+    # event count) to Redis so sessions survive server restarts.
+    # ═══════════════════════════════════════════════════════════════════════
+
+    def save_pipeline_state(self, user_id: str, state: Dict) -> bool:
+        """
+        Persist full pipeline context state to Redis.
+
+        State includes:
+        - cusum: {cusum_pos, cusum_neg, previous_score, step_count, drift_detected, max_cusum}
+        - similarity_history: list of recent similarity scores
+        - trust_history: list of recent trust scores
+        - event_count: total events processed
+        - session_id: associated session identifier
+        - cognitive_trajectory: list of cognitive states
+        - latest_decision: last action taken
+
+        Called periodically (every 5 events) to minimize Redis overhead
+        while ensuring minimal state loss on crash.
+        """
+        key = f"aegisx:pipeline:{user_id}"
+        return self._set(key, state, self.PIPELINE_STATE_TTL)
+
+    def load_pipeline_state(self, user_id: str) -> Optional[Dict]:
+        """
+        Load persisted pipeline state from Redis.
+
+        Returns None if no state exists (new user or expired session).
+        The caller must reconstruct PipelineContext from this state.
+        """
+        key = f"aegisx:pipeline:{user_id}"
+        return self._get(key)
+
+    def delete_pipeline_state(self, user_id: str) -> bool:
+        """Remove pipeline state (session ended cleanly)."""
+        key = f"aegisx:pipeline:{user_id}"
+        return self._delete(key)
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # INTERNAL HELPERS
+    # ═══════════════════════════════════════════════════════════════════════
 
     def _set(self, key: str, value: Any, ttl: int) -> bool:
         if self._connected and self._redis:

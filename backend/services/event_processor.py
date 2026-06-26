@@ -19,9 +19,7 @@ The Event Processor is responsible for:
 6. Building the response payload
 7. Generating alerts if thresholds breached
 8. Writing audit log entries
-
-This is the CONTROLLER in MVC terms — it doesn't DO the computation,
-it ORCHESTRATES it and manages the data flow between components.
+9. Persisting pipeline state to Redis for crash recovery (FIX #9)
 
 Architecture:
     WebSocket Handler
@@ -29,10 +27,10 @@ Architecture:
     EventProcessor.process_behavioral_event(user_id, raw_event, context)
          ↓
     ┌── Validation
-    ├── SessionManager (get/create session)
     ├── TrustPipeline.process(ctx, event)
     ├── Alert Engine (generate alerts if needed)
     ├── Audit Logger (record every decision)
+    ├── State Persistence (Redis snapshot every 5 events)
     └── Response Builder (structured WebSocket payload)
          ↓
     TrustResponse → WebSocket → Client + Dashboard
@@ -54,10 +52,13 @@ from backend.services.cache_service import CacheService
 AUDIT_LOG_DIR = Path(__file__).parent.parent.parent / "logs"
 AUDIT_LOG_DIR.mkdir(parents=True, exist_ok=True)
 
+# How often to persist pipeline state to Redis (every N events per user)
+STATE_PERSIST_INTERVAL = 5
+
 
 class AlertEngine:
     """
-    Phase 6I: Generates human-readable alerts based on trust state.
+    Generates human-readable alerts based on trust state.
 
     Alerts are pushed to the dashboard immediately and stored in audit logs.
     They answer: "What just happened and why should a human care?"
@@ -116,7 +117,7 @@ class AlertEngine:
 
 class AuditLogger:
     """
-    Phase 6J: Records every trust decision for compliance and traceability.
+    Records every trust decision for compliance and traceability.
 
     Banks require complete audit trails:
     - What happened? (event details)
@@ -188,11 +189,9 @@ class EventProcessor:
     3. Runs the full trust pipeline
     4. Evaluates alert rules
     5. Logs the decision for audit
-    6. Builds the structured response
-    7. Returns everything needed for WebSocket + Dashboard
-
-    This replaces all the manual orchestration that would otherwise
-    live in the WebSocket handler itself.
+    6. Persists pipeline state to Redis (every 5 events — FIX #9)
+    7. Builds the structured response
+    8. Returns everything needed for WebSocket + Dashboard
     """
 
     def __init__(self):
@@ -210,6 +209,7 @@ class EventProcessor:
         # Session metadata
         self._session_ids: Dict[str, str] = {}
         self._session_alerts: Dict[str, List[Dict]] = {}
+        self._blocked_users: Dict[str, str] = {}  # user_id → block reason
 
     # ═══════════════════════════════════════════════════════════════════════
     # SESSION LIFECYCLE
@@ -219,9 +219,16 @@ class EventProcessor:
         """
         Initialize processing context for a new user session.
         Loads baseline if available.
+        Attempts to restore pipeline state from Redis if session was interrupted (FIX #9).
         """
         baseline, meta = self._baseline_service.load_baseline(user_id)
         ctx = self._pipeline.create_context(user_id=user_id, baseline=baseline)
+
+        # FIX #9: Attempt to restore pipeline state from Redis (crash recovery)
+        saved_state = self._cache.load_pipeline_state(user_id)
+        if saved_state and saved_state.get("session_id") == session_id:
+            self._restore_pipeline_context(ctx, saved_state)
+
         self._contexts[user_id] = ctx
         self._session_ids[user_id] = session_id
         self._session_alerts[user_id] = []
@@ -230,7 +237,7 @@ class EventProcessor:
             "session_id": session_id,
             "has_baseline": baseline is not None,
             "started_at": datetime.now(timezone.utc).isoformat(),
-            "event_count": 0,
+            "event_count": ctx.event_count,
         })
 
         return {
@@ -238,19 +245,27 @@ class EventProcessor:
             "session_id": session_id,
             "has_baseline": baseline is not None,
             "status": "ready",
+            "restored_events": ctx.event_count,
         }
 
     def end_session(self, user_id: str) -> Dict:
-        """Clean up session resources."""
+        """Clean up session resources and remove persisted pipeline state."""
         ctx = self._contexts.pop(user_id, None)
         session_id = self._session_ids.pop(user_id, "unknown")
         alerts = self._session_alerts.pop(user_id, [])
+        was_blocked = user_id in self._blocked_users
+        self._blocked_users.pop(user_id, None)
 
         self._cache.delete_session_state(user_id)
+        self._cache.delete_pipeline_state(user_id)
         self._cache.flush_user(user_id)
 
         if ctx is None:
             return {"status": "not_found"}
+
+        # Capture final state before cleanup
+        trust_history = ctx.trust_engine.get_trust_history()
+        final_trust = trust_history[-1] if trust_history else 1.0
 
         return {
             "user_id": user_id,
@@ -258,7 +273,76 @@ class EventProcessor:
             "status": "ended",
             "total_events": ctx.event_count,
             "total_alerts": len(alerts),
+            "final_trust_score": round(final_trust, 4),
+            "was_blocked": was_blocked,
+            "drift_detected": ctx.cusum.is_drifting,
         }
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # FIX #9: STATE PERSISTENCE HELPERS
+    # ═══════════════════════════════════════════════════════════════════════
+
+    def _persist_pipeline_state(self, user_id: str, ctx: PipelineContext, session_id: str):
+        """
+        Serialize pipeline context state to Redis for crash recovery.
+
+        Persists: CUSUM state, similarity history, trust history, event count.
+        Called every STATE_PERSIST_INTERVAL events (default: 5) to minimize
+        Redis overhead while ensuring minimal state loss on crash.
+        """
+        try:
+            state = {
+                "session_id": session_id,
+                "user_id": user_id,
+                "event_count": ctx.event_count,
+                "is_enrolled": ctx.is_enrolled,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "cusum": {
+                    "cusum_pos": ctx.cusum._cusum_pos,
+                    "cusum_neg": ctx.cusum._cusum_neg,
+                    "previous_score": ctx.cusum._previous_score,
+                    "step_count": ctx.cusum._step_count,
+                    "drift_detected": ctx.cusum._drift_detected,
+                    "max_cusum": ctx.cusum._max_cusum,
+                },
+                "similarity_history": list(ctx.history._scores),
+                "trust_history": list(ctx.trust_engine._history),
+            }
+            self._cache.save_pipeline_state(user_id, state)
+        except Exception as e:
+            # Non-critical: log but don't fail the pipeline
+            print(f"[AEGIS-X] Warning: Failed to persist state for {user_id}: {e}")
+
+    def _restore_pipeline_context(self, ctx: PipelineContext, state: Dict):
+        """
+        Restore pipeline context from persisted Redis state after a crash/restart.
+
+        Rebuilds: CUSUM accumulator, similarity history buffer,
+        trust history, and event count so the session continues seamlessly.
+        """
+        try:
+            ctx.event_count = state.get("event_count", 0)
+
+            # Restore CUSUM state
+            cusum_state = state.get("cusum", {})
+            if cusum_state:
+                ctx.cusum._cusum_pos = cusum_state.get("cusum_pos", 0.0)
+                ctx.cusum._cusum_neg = cusum_state.get("cusum_neg", 0.0)
+                ctx.cusum._previous_score = cusum_state.get("previous_score")
+                ctx.cusum._step_count = cusum_state.get("step_count", 0)
+                ctx.cusum._drift_detected = cusum_state.get("drift_detected", False)
+                ctx.cusum._max_cusum = cusum_state.get("max_cusum", 0.0)
+
+            # Restore similarity history
+            for score in state.get("similarity_history", []):
+                ctx.history.add(float(score))
+
+            # Restore trust score history
+            for score in state.get("trust_history", []):
+                ctx.trust_engine._history.append(float(score))
+
+        except Exception as e:
+            print(f"[AEGIS-X] Warning: Failed to restore state for {ctx.user_id}: {e}")
 
     # ═══════════════════════════════════════════════════════════════════════
     # MAIN EVENT PROCESSING (called every 2 seconds per user)
@@ -301,6 +385,14 @@ class EventProcessor:
         if ctx is None:
             return {"error": "no_session", "message": "Call start_session first."}
 
+        # ─── CHECK IF SESSION IS BLOCKED ───────────────────────────────────
+        if user_id in self._blocked_users:
+            return {
+                "error": "session_blocked",
+                "reason": self._blocked_users[user_id],
+                "action": "BLOCK",
+            }
+
         # ─── VALIDATE EVENT ────────────────────────────────────────────────
         validation = self._feature_engineer.validate_event(raw_event)
         if validation["completeness"] < 0.5:
@@ -333,11 +425,19 @@ class EventProcessor:
             transaction_amount=transaction_amount,
         )
 
+        # ─── FIX #9: PERSIST PIPELINE STATE (every N events) ──────────────
+        if ctx.event_count % STATE_PERSIST_INTERVAL == 0:
+            self._persist_pipeline_state(user_id, ctx, session_id)
+
+        # ─── TRACK BLOCK STATE ─────────────────────────────────────────────
+        if result.decision == "BLOCK":
+            self._blocked_users[user_id] = result.explanation
+
         # ─── BUILD RESPONSE ───────────────────────────────────────────────
         return self._build_response(user_id, result, alerts)
 
     # ═══════════════════════════════════════════════════════════════════════
-    # RESPONSE BUILDER (Phase 6G)
+    # RESPONSE BUILDER
     # ═══════════════════════════════════════════════════════════════════════
 
     def _build_response(
@@ -416,7 +516,7 @@ class EventProcessor:
     # ═══════════════════════════════════════════════════════════════════════
 
     def get_trust_timeline(self, user_id: str) -> List[float]:
-        """Phase 6H: Return trust score history for timeline visualization."""
+        """Return trust score history for timeline visualization."""
         ctx = self._contexts.get(user_id)
         if ctx is None:
             return []

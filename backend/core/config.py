@@ -21,6 +21,21 @@ REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_DB = int(os.getenv("REDIS_DB", "0"))
 
+# CORS — Allowed origins for production safety
+# Comma-separated list in env, defaults to localhost + Firebase + Render URLs
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "AEGISX_CORS_ORIGINS",
+        "http://localhost:3000,http://localhost:5173,http://localhost:8000,https://aegisx-2026.web.app,https://aegisx-2026.firebaseapp.com,https://aegisx-backend-t1v7.onrender.com"
+    ).split(",")
+    if origin.strip()
+]
+
+# WebSocket rate limiting (events per user per second)
+WS_RATE_LIMIT_PER_USER = int(os.getenv("AEGISX_WS_RATE_LIMIT", "5"))
+WS_RATE_LIMIT_BURST = int(os.getenv("AEGISX_WS_RATE_BURST", "10"))
+
 # Trust Score Weights (standard equal-split with behavioral priority)
 TRUST_WEIGHT_BEHAVIORAL = 0.40
 TRUST_WEIGHT_DEVICE = 0.20

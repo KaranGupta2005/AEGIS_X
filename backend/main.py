@@ -4,14 +4,65 @@ from contextlib import asynccontextmanager
 from typing import Optional
 import json
 import asyncio
+import time
 import httpx
 
 from backend.websocket.socket_manager import ConnectionManager
 from backend.api.dependencies import get_processor, set_processor
 from backend.core.rate_limiter import RateLimitMiddleware
+from backend.core.config import CORS_ALLOWED_ORIGINS, WS_RATE_LIMIT_PER_USER, WS_RATE_LIMIT_BURST
 
 
 connection_manager = ConnectionManager()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# WebSocket Rate Limiter — per-user token bucket to prevent event flooding
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class WebSocketRateLimiter:
+    """
+    Per-user token bucket rate limiter for WebSocket events.
+    Prevents attackers from flooding the pipeline with thousands of events/second
+    (each costing ~55ms MiniLM inference).
+    """
+
+    def __init__(self, rate: float = WS_RATE_LIMIT_PER_USER, burst: int = WS_RATE_LIMIT_BURST):
+        self._rate = rate          # tokens refilled per second
+        self._burst = burst        # max tokens (burst capacity)
+        self._tokens: dict = {}    # user_id → current tokens
+        self._last_refill: dict = {}  # user_id → last refill timestamp
+
+    def allow(self, user_id: str) -> bool:
+        """Check if user is allowed to send an event. Returns False if rate-limited."""
+        now = time.time()
+
+        if user_id not in self._tokens:
+            self._tokens[user_id] = float(self._burst)
+            self._last_refill[user_id] = now
+
+        # Refill tokens based on elapsed time
+        elapsed = now - self._last_refill[user_id]
+        self._last_refill[user_id] = now
+        self._tokens[user_id] = min(
+            float(self._burst),
+            self._tokens[user_id] + elapsed * self._rate,
+        )
+
+        # Consume one token
+        if self._tokens[user_id] >= 1.0:
+            self._tokens[user_id] -= 1.0
+            return True
+        return False
+
+    def cleanup(self, user_id: str):
+        """Remove user state when they disconnect."""
+        self._tokens.pop(user_id, None)
+        self._last_refill.pop(user_id, None)
+
+
+ws_rate_limiter = WebSocketRateLimiter()
+
 
 # Self-ping to prevent Render free tier sleep
 async def keep_alive():
@@ -50,13 +101,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# FIX #12: Restrict CORS to known origins instead of wildcard "*"
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
+    allow_origins=CORS_ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-Session-ID", "X-User-Id"],
+    expose_headers=["X-RateLimit-Remaining"],
 )
 
 app.add_middleware(RateLimitMiddleware, requests_per_second=50, burst=100)
@@ -111,6 +163,15 @@ async def websocket_sdk(websocket: WebSocket, user_id: str, session_id: Optional
             msg_type = message.get("type", "behavioral_event")
 
             if msg_type == "behavioral_event":
+                # FIX #11: Rate limit WebSocket events per user
+                if not ws_rate_limiter.allow(user_id):
+                    await websocket.send_json({
+                        "type": "rate_limited",
+                        "message": "Event rate exceeded. Max 5 events/second.",
+                        "user_id": user_id,
+                    })
+                    continue
+
                 raw_event = message.get("event", message)
                 tx_amount = message.get("transaction_amount", 0.0)
                 is_new_ben = message.get("is_new_beneficiary", False)
@@ -148,6 +209,7 @@ async def websocket_sdk(websocket: WebSocket, user_id: str, session_id: Optional
     except Exception as e:
         print(f"[AEGIS-X] WebSocket error for {user_id}: {e}")
     finally:
+        ws_rate_limiter.cleanup(user_id)
         connection_manager.disconnect_sdk(user_id)
         processor.end_session(user_id)
 
