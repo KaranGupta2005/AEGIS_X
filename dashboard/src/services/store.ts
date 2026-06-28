@@ -9,6 +9,10 @@ export interface TimelineEntry {
   decision: string
   drift_detected: boolean
   event_number: number
+  anomaly_score: number
+  fraud_probability: number
+  entropy: number
+  velocity: number
 }
 
 export interface AlertEntry {
@@ -111,6 +115,10 @@ function reducer(state: SessionState, action: Action): SessionState {
         decision: d.decision ?? state.decision,
         drift_detected: d.drift_detected ?? state.driftDetected,
         event_number: d.event_number ?? state.eventCount + 1,
+        anomaly_score: d.anomaly?.score ?? state.anomalyScore,
+        fraud_probability: d.fraud?.probability ?? state.fraudProbability,
+        entropy: d.temporal?.entropy ?? state.entropy,
+        velocity: d.temporal?.velocity ?? state.velocity,
       }
       const newAlerts: AlertEntry[] = (d.alerts || []).map((a: any) => ({
         severity: a.severity,

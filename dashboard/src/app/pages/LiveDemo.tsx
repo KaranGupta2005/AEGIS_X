@@ -47,8 +47,18 @@ const LiveDemo: React.FC = () => {
     if (screen === 'confirm' || screen === 'amount') {
       if (trustScore < 60 && !blocked && !txSuccess) {
         setBlocked(true)
+        // Auto-dismiss block overlay after 3.5s (scenario will auto-restart)
+        setTimeout(() => {
+          setBlocked(false)
+          setScreen('dashboard')
+          setAmount('')
+          setStepUpShown(false)
+          setTxSuccess(false)
+        }, 3500)
       } else if (trustScore < 85 && trustScore >= 60 && !stepUpShown && !blocked && !txSuccess) {
         setStepUpShown(true)
+        // Auto-dismiss step-up after 2.5s
+        setTimeout(() => setStepUpShown(false), 2500)
       }
     }
   }, [trustScore, screen])

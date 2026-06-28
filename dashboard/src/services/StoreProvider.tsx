@@ -24,21 +24,39 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const ws = createWebSocket(
       userId,
       (data: TrustUpdate) => {
-        // Handle blocked session — stop simulator, don't freeze
+        // If session got blocked, auto-restart with fresh session after 3s
         if ((data as any).error === 'session_blocked' || (data as any).action === 'BLOCK') {
           simRef.current?.stop()
           simRef.current = null
+          // Auto-restart after a brief pause so the demo never stops
+          setTimeout(() => {
+            if (!stopped) connect(scenario)
+          }, 3000)
+          return
         }
-        // Only dispatch trust updates (not error responses)
+        // Only dispatch trust updates (not error/session_started responses)
         if (data.type === 'trust_update' || data.trust_score !== undefined) {
           dispatch({ type: 'TRUST_UPDATE', payload: data })
+          // If decision is BLOCK, auto-restart after showing it briefly
+          if (data.decision === 'BLOCK') {
+            simRef.current?.stop()
+            simRef.current = null
+            setTimeout(() => {
+              if (!stopped) connect(scenario)
+            }, 4000)
+          }
         }
       },
       () => {
         dispatch({ type: 'SET_CONNECTED', payload: false })
+        // Reconnect on close (keep it infinite)
+        setTimeout(() => {
+          if (!stopped) connect(scenario)
+        }, 2000)
       }
     )
 
+    let stopped = false
     wsRef.current = ws
 
     ws.ws.onopen = () => {

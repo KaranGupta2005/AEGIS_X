@@ -1,4 +1,4 @@
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || ''
+﻿const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || ''
 const API_BASE = `${BACKEND_URL}/api/v1`
 const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
 const WS_HOST = import.meta.env.VITE_BACKEND_URL
@@ -144,7 +144,7 @@ export function createWebSocket(userId: string, onMessage: (data: TrustUpdate) =
 
   ws.onmessage = (event) => {
     const data = JSON.parse(event.data)
-    // Pass through all responses — let the store handle filtering
+    // Pass through all responses â€” let the store handle filtering
     onMessage(data as TrustUpdate)
   }
 
@@ -247,6 +247,7 @@ function generateMalwareEvent() {
   }
 }
 
+
 export function createSimulator(
   scenario: SimulatorScenario,
   wsConnection: ReturnType<typeof createWebSocket>,
@@ -255,6 +256,8 @@ export function createSimulator(
   let step = 0
   let intervalId: ReturnType<typeof setInterval> | null = null
   let stopped = false
+  const SCAM_CYCLE = 22
+  const MALWARE_CYCLE = 12
 
   const tick = () => {
     if (stopped) return
@@ -262,227 +265,149 @@ export function createSimulator(
     let event: Record<string, any>
     let txAmount = 0
     let isNewBen = false
+    const t = Date.now() / 1000
 
     if (scenario === 'normal') {
-      // NORMAL: Infinite loop through realistic banking activities
-      // Cycles through phases every ~20 steps to keep the demo lively
-      const phase = step % 20
-
+      const phase = step % 24
       event = generateNormalEvent()
-      const t = Date.now() / 1000
-
       if (phase <= 3) {
-        // Idle browsing — checking balance, reading notifications
-        event.typing_speed_cps = 0.5 + Math.random() * 0.8
+        event.typing_speed_cps = 0.5 + Math.sin(t * 0.2) * 0.3 + Math.random() * 0.5
         event.interaction_intensity = Math.round(2 + Math.random() * 3)
-        event.scroll_speed_mean = 0.6 + Math.sin(t * 0.5) * 0.3 + Math.random() * 0.3
-        event.hesitation_ratio = 0.04 + Math.random() * 0.04
-        event.touch_duration_mean = 90 + Math.random() * 25
-        txAmount = 0
-      } else if (phase <= 6) {
-        // Active navigation — opening menus, selecting options
-        event.interaction_intensity = Math.round(8 + Math.random() * 5)
-        event.touch_duration_mean = 85 + Math.random() * 30
-        event.swipe_velocity_mean = 1.3 + Math.random() * 0.4
-        event.scroll_speed_mean = 1.0 + Math.random() * 0.5
-        event.hesitation_ratio = 0.05 + Math.random() * 0.03
-        txAmount = 0
-      } else if (phase <= 10) {
-        // Typing session — entering amount, searching contacts
-        event.typing_speed_cps = 3.5 + Math.sin(t * 0.8) * 0.8 + Math.random() * 1.0
-        event.typing_rhythm_variance = 30 + Math.random() * 20
-        event.interaction_intensity = Math.round(10 + Math.random() * 5)
-        event.correction_rate = 0.02 + Math.random() * 0.03
-        event.hesitation_ratio = 0.06 + Math.random() * 0.04
-        txAmount = Math.round(1000 + Math.random() * 4000)
-      } else if (phase <= 13) {
-        // Review + confirm — slower, reading carefully
-        event.typing_speed_cps = 1.0 + Math.random() * 0.5
+        event.scroll_speed_mean = 0.6 + Math.sin(t * 0.4) * 0.3
+      } else if (phase <= 7) {
+        event.interaction_intensity = Math.round(7 + Math.sin(t * 0.6) * 3 + Math.random() * 3)
+        event.touch_duration_mean = 80 + Math.random() * 30
+        event.swipe_velocity_mean = 1.2 + Math.sin(t * 0.3) * 0.3
+      } else if (phase <= 11) {
+        event.typing_speed_cps = 3.2 + Math.sin(t * 1.1) * 0.8 + Math.random() * 0.8
+        event.typing_rhythm_variance = 28 + Math.sin(t * 0.7) * 10
+        event.interaction_intensity = Math.round(9 + Math.random() * 4)
+        txAmount = Math.round(1500 + Math.sin(step * 0.2) * 1000 + Math.random() * 2000)
+      } else if (phase <= 14) {
+        event.typing_speed_cps = 0.8 + Math.random() * 0.4
+        event.scroll_speed_mean = 0.25 + Math.random() * 0.15
+        event.touch_duration_mean = 135 + Math.random() * 30
+        txAmount = Math.round(2000 + Math.random() * 2500)
+      } else if (phase <= 18) {
+        event.scroll_speed_mean = 0.7 + Math.sin(t * 0.5) * 0.3
         event.interaction_intensity = Math.round(4 + Math.random() * 3)
-        event.scroll_speed_mean = 0.3 + Math.random() * 0.2
-        event.hesitation_ratio = 0.08 + Math.random() * 0.04
-        event.touch_duration_mean = 130 + Math.random() * 30
-        txAmount = Math.round(2000 + Math.random() * 3000)
-      } else if (phase <= 16) {
-        // Post-transaction — checking confirmation, balance
-        event.typing_speed_cps = 0.8 + Math.random() * 0.5
-        event.interaction_intensity = Math.round(3 + Math.random() * 2)
-        event.scroll_speed_mean = 0.5 + Math.random() * 0.3
-        event.hesitation_ratio = 0.03 + Math.random() * 0.02
-        txAmount = 0
       } else {
-        // Casual browsing — mini statement, offers
-        event.scroll_speed_mean = 0.9 + Math.sin(t * 0.3) * 0.3 + Math.random() * 0.3
-        event.interaction_intensity = Math.round(5 + Math.random() * 3)
-        event.typing_speed_cps = 0.3 + Math.random() * 0.5
-        event.hesitation_ratio = 0.04 + Math.random() * 0.03
-        txAmount = 0
+        event.interaction_intensity = Math.round(1 + Math.random() * 2)
+        event.gyroscope_variance = 0.01 + Math.sin(t * 0.2) * 0.005
       }
 
     } else if (scenario === 'scam') {
-      // SCAM: Slow dramatic 7-phase escalation (more events before BLOCK)
-      // Total ~18-20 events before full coercion — gives judges time to SEE the story
-      //
-      // Phase 1 (steps 1-3):   Normal calm usage (before the call comes)
-      // Phase 2 (steps 4-6):   Phone rings — distraction, pauses
-      // Phase 3 (steps 7-9):   "I'm calling from your bank" — confusion, hesitation
-      // Phase 4 (steps 10-12): "Your account is compromised" — anxiety builds
-      // Phase 5 (steps 13-15): "Transfer to safe account NOW" — panic, trembling
-      // Phase 6 (steps 16-18): "Police will arrest you" — full panic, corrections
-      // Phase 7 (steps 19+):   Coerced obedience — dictation speed, frozen
+      const cs = ((step - 1) % SCAM_CYCLE) + 1
+      const cycleVar = Math.sin(Math.floor(step / SCAM_CYCLE) * 1.7) * 0.04
 
-      if (step <= 3) {
-        // PHASE 1: Calm normal usage
+      if (cs <= 4) {
         event = generateNormalEvent()
-        event.session_time_elapsed = step * 30
+        event.interaction_intensity = Math.round(5 + Math.sin(t * 0.3) * 2 + Math.random() * 2)
         txAmount = 0
-      } else if (step <= 6) {
-        // PHASE 2: Phone rings — attention splits, slight pauses
-        const distraction = (step - 3) / 3 // 0.33 → 1.0
-        event = generateNormalEvent()
-        event.hesitation_ratio = 0.10 + distraction * 0.10
-        event.hesitation_count = Math.round(2 + distraction * 2)
-        event.interaction_intensity = Math.max(2, Math.round(6 - distraction * 3))
-        event.typing_speed_cps = Math.max(1.5, 3.0 - distraction * 1.2)
-        event.session_time_elapsed = step * 30
-        txAmount = 0
-      } else if (step <= 9) {
-        // PHASE 3: "I'm from SBI Fraud Dept" — confusion, uncertainty
-        const confusion = (step - 6) / 3
-        event = generateScamEvent(confusion * 0.2)
-        event.typing_speed_cps = Math.max(1.0, 2.2 - confusion * 0.8)
-        event.hesitation_ratio = 0.18 + confusion * 0.12
-        event.hesitation_count = Math.round(4 + confusion * 3)
-        event.correction_rate = 0.05 + confusion * 0.08
-        event.gyroscope_variance = 0.016 + confusion * 0.008
-        event.session_time_elapsed = step * 30
-        txAmount = 0
-      } else if (step <= 12) {
-        // PHASE 4: "Your account has suspicious activity" — anxiety
-        const anxiety = (step - 9) / 3
-        event = generateScamEvent(0.2 + anxiety * 0.2)
-        event.typing_speed_cps = Math.max(0.8, 1.8 - anxiety * 0.7)
-        event.hesitation_ratio = 0.28 + anxiety * 0.12
+      } else if (cs <= 7) {
+        const confusion = (cs - 4) / 3 + cycleVar
+        event = generateScamEvent(Math.max(0, confusion * 0.25))
+        event.typing_speed_cps = Math.max(0.8, 2.8 - confusion * 1.5 + Math.sin(t * 0.9) * 0.3)
+        event.hesitation_ratio = 0.12 + confusion * 0.15 + Math.random() * 0.05
+        event.hesitation_count = Math.round(2 + confusion * 4)
+        event.gyroscope_variance = 0.018 + confusion * 0.012
+        txAmount = cs >= 7 ? 30000 : 0
+        isNewBen = cs >= 7
+      } else if (cs <= 10) {
+        const anxiety = (cs - 7) / 3 + cycleVar
+        event = generateScamEvent(0.25 + anxiety * 0.2)
+        event.typing_speed_cps = Math.max(0.6, 1.6 - anxiety * 0.6)
+        event.correction_rate = 0.08 + anxiety * 0.15
+        event.hesitation_ratio = 0.25 + anxiety * 0.15
         event.hesitation_count = Math.round(5 + anxiety * 4)
-        event.correction_rate = 0.10 + anxiety * 0.12
-        event.gyroscope_variance = 0.025 + anxiety * 0.015
-        event.touch_duration_mean = 150 + anxiety * 60
-        event.typing_rhythm_variance = 55 + anxiety * 60
-        event.session_time_elapsed = step * 30
-        txAmount = step >= 11 ? Math.round(50000 + anxiety * 50000) : 0
-        isNewBen = step >= 11
-      } else if (step <= 15) {
-        // PHASE 5: "Transfer ₹2L to this safe account immediately" — panic onset
-        const panic = (step - 12) / 3
-        event = generateScamEvent(0.4 + panic * 0.25)
-        event.typing_speed_cps = Math.max(0.5, 1.2 - panic * 0.5)
-        event.typing_rhythm_variance = 100 + panic * 120
-        event.correction_rate = 0.20 + panic * 0.18
-        event.hesitation_ratio = 0.40 + panic * 0.15
-        event.hesitation_count = Math.round(8 + panic * 5)
-        event.gyroscope_variance = 0.035 + panic * 0.025
-        event.touch_duration_mean = 200 + panic * 80
-        event.interaction_intensity = Math.max(1, Math.round(3 - panic * 1.5))
-        event.session_time_elapsed = step * 30
-        txAmount = Math.round(150000 + panic * 100000)
+        event.gyroscope_variance = 0.025 + anxiety * 0.018
+        event.touch_duration_mean = 155 + anxiety * 70
+        event.typing_rhythm_variance = 50 + anxiety * 70
+        txAmount = Math.round(80000 + anxiety * 70000)
         isNewBen = true
-      } else if (step <= 18) {
-        // PHASE 6: "Police case filed, transfer or arrested" — full panic
-        const terror = (step - 15) / 3
-        event = generateScamEvent(0.65 + terror * 0.2)
-        event.typing_speed_cps = Math.max(0.3, 0.8 - terror * 0.4)
-        event.typing_rhythm_variance = 200 + terror * 150
-        event.correction_rate = 0.35 + terror * 0.2
-        event.hesitation_ratio = 0.55 + terror * 0.15
-        event.hesitation_count = Math.round(12 + terror * 6)
-        event.gyroscope_variance = 0.06 + terror * 0.03
-        event.touch_duration_mean = 280 + terror * 100
-        event.touch_duration_variance = 2500 + terror * 2000
-        event.interaction_intensity = 1
-        event.scroll_speed_mean = 0.05
-        event.session_time_elapsed = step * 30
-        txAmount = Math.round(250000 + terror * 100000)
+      } else if (cs <= 14) {
+        const panic = (cs - 10) / 4 + cycleVar
+        event = generateScamEvent(0.45 + panic * 0.3)
+        event.typing_speed_cps = Math.max(0.3, 0.9 - panic * 0.4)
+        event.typing_rhythm_variance = 120 + panic * 180 + Math.sin(t * 1.5) * 30
+        event.correction_rate = 0.25 + panic * 0.25
+        event.hesitation_ratio = 0.45 + panic * 0.2
+        event.hesitation_count = Math.round(9 + panic * 7)
+        event.gyroscope_variance = 0.045 + panic * 0.035
+        event.touch_duration_mean = 230 + panic * 120
+        event.interaction_intensity = Math.max(1, Math.round(2 - panic))
+        txAmount = Math.round(200000 + panic * 150000)
         isNewBen = true
-      } else {
-        // PHASE 7: Full coercion — robotic obedience under duress
-        const depth = Math.min(1, (step - 18) / 4)
-        event = generateScamEvent(0.85 + depth * 0.1)
-        event.typing_speed_cps = 0.3 + Math.random() * 0.2
-        event.typing_rhythm_variance = 320 + Math.random() * 80
-        event.correction_rate = 0.5 + Math.random() * 0.15
-        event.hesitation_ratio = 0.75 + Math.random() * 0.15
-        event.hesitation_count = Math.round(16 + Math.random() * 4)
-        event.gyroscope_variance = 0.09 + Math.random() * 0.04
+      } else if (cs <= 18) {
+        const coercion = (cs - 14) / 4
+        event = generateScamEvent(0.8 + coercion * 0.15)
+        event.typing_speed_cps = 0.3 + Math.random() * 0.15
+        event.typing_rhythm_variance = 280 + Math.random() * 100
+        event.correction_rate = 0.45 + Math.random() * 0.15
+        event.hesitation_ratio = 0.7 + coercion * 0.15
+        event.hesitation_count = Math.round(14 + Math.random() * 5)
+        event.gyroscope_variance = 0.08 + Math.random() * 0.04
         event.interaction_intensity = 1
         event.scroll_speed_mean = 0.01
-        event.swipe_velocity_mean = 0.05
-        event.touch_duration_mean = 400 + Math.random() * 100
-        event.session_time_elapsed = step * 30
-        txAmount = Math.round(400000 + Math.random() * 100000)
+        txAmount = Math.round(350000 + Math.random() * 100000)
         isNewBen = true
+      } else {
+        const recovery = (cs - 18) / (SCAM_CYCLE - 18)
+        event = generateNormalEvent()
+        event.hesitation_ratio = 0.3 * (1 - recovery) + 0.06 * recovery
+        event.correction_rate = 0.15 * (1 - recovery) + 0.03 * recovery
+        event.gyroscope_variance = 0.04 * (1 - recovery) + 0.014 * recovery
+        event.typing_speed_cps = 1.5 * (1 - recovery) + 3.5 * recovery
+        event.typing_rhythm_variance = 80 * (1 - recovery) + 35 * recovery
+        txAmount = 0
       }
 
     } else {
-      // MALWARE: Quick but visible transition from human to bot
-      // Phase 1 (steps 1-2):   Normal user (genuine session start)
-      // Phase 2 (steps 3-4):   RAT injection — behavior flickers
-      // Phase 3 (steps 5-6):   Bot stabilizing — near-zero variance emerges
-      // Phase 4 (steps 7+):    Full automated control — inhuman precision
+      const cs = ((step - 1) % MALWARE_CYCLE) + 1
 
-      if (step <= 2) {
-        // Genuine user just logged in
+      if (cs <= 3) {
         event = generateNormalEvent()
-        event.session_time_elapsed = step * 15
+        event.interaction_intensity = Math.round(5 + Math.sin(t * 0.4) * 2 + Math.random() * 2)
         txAmount = 0
-      } else if (step <= 4) {
-        // RAT INJECTING: Sudden behavioral glitches — uncanny valley
-        const injection = (step - 2) / 2 // 0.5 → 1.0
+      } else if (cs <= 5) {
+        const injection = (cs - 3) / 2
         const human = generateNormalEvent()
         const bot = generateMalwareEvent()
         event = {} as Record<string, any>
         for (const key of Object.keys(human)) {
-          const hv = (human as any)[key]
-          const bv = (bot as any)[key]
+          const hv = (human as any)[key]; const bv = (bot as any)[key]
           if (typeof hv === 'number' && typeof bv === 'number') {
-            // Jerky transition — not smooth, with random flickers
-            const flicker = Math.random() < 0.3 ? 1.0 : injection
+            const flicker = Math.random() < 0.35 ? 1.0 : injection
             ;(event as any)[key] = hv * (1 - flicker) + bv * flicker
-          } else {
-            ;(event as any)[key] = injection > 0.5 ? bv : hv
-          }
+          } else { (event as any)[key] = injection > 0.5 ? bv : hv }
         }
-        event.gyroscope_variance = 0.012 * (1 - injection) + 0.0005 * injection
-        event.typing_rhythm_variance = 35 * (1 - injection) + 1.5 * injection
-        event.session_time_elapsed = step * 15
-        txAmount = step === 4 ? 150000 : 0
-        isNewBen = step === 4
-      } else if (step <= 6) {
-        // BOT STABILIZING: Almost fully machine, tiny human remnants
+        event.gyroscope_variance = 0.01 * (1 - injection) + 0.0002 * injection
+        txAmount = cs === 5 ? 180000 : 0
+        isNewBen = cs === 5
+      } else if (cs <= 9) {
         event = generateMalwareEvent()
-        const remnant = (7 - step) / 4 // small human trace fading
-        event.typing_rhythm_variance = 1.5 + remnant * 8
-        event.gyroscope_variance = 0.0003 + remnant * 0.002
-        event.hesitation_ratio = remnant * 0.02
-        event.session_time_elapsed = step * 15
-        txAmount = Math.round(250000 + Math.random() * 100000)
+        const cycle = Math.sin(cs * 0.8 + t * 0.3)
+        event.typing_speed_cps = 9.2 + cycle * 0.5
+        event.swipe_velocity_mean = 2.35 + cycle * 0.15
+        if (Math.random() < 0.12) {
+          event.typing_speed_cps = 6.5 + Math.random() * 1.5
+          event.typing_rhythm_variance = 4 + Math.random() * 3
+        }
+        txAmount = Math.round(400000 + Math.random() * 100000)
         isNewBen = true
       } else {
-        // FULL BOT: Inhuman precision, repeating pattern
-        event = generateMalwareEvent()
-        // Subtle periodic pattern (bot script cycling)
-        const cycle = Math.sin(step * 0.5) * 0.1
-        event.typing_speed_cps = 9.5 + cycle
-        event.swipe_velocity_mean = 2.4 + cycle * 0.5
-        event.touch_duration_mean = 44 + cycle * 5
-        // Occasional recalibration glitch (10% chance)
-        if (Math.random() < 0.1) {
-          event.typing_speed_cps = 7.0 + Math.random() * 1.5
-          event.typing_rhythm_variance = 4 + Math.random() * 3
-          event.hesitation_ratio = 0.01
+        const recovery = (cs - 9) / (MALWARE_CYCLE - 9)
+        const human = generateNormalEvent()
+        const bot = generateMalwareEvent()
+        event = {} as Record<string, any>
+        for (const key of Object.keys(human)) {
+          const hv = (human as any)[key]; const bv = (bot as any)[key]
+          if (typeof hv === 'number' && typeof bv === 'number') {
+            ;(event as any)[key] = bv * (1 - recovery) + hv * recovery
+          } else { (event as any)[key] = recovery > 0.5 ? hv : bv }
         }
-        event.session_time_elapsed = step * 15
-        txAmount = Math.round(450000 + Math.random() * 50000 + step * 5000)
-        isNewBen = true
+        event.gyroscope_variance = 0.0002 * (1 - recovery) + 0.014 * recovery
+        txAmount = 0
       }
     }
 
@@ -490,17 +415,8 @@ export function createSimulator(
   }
 
   return {
-    start: () => {
-      step = 0
-      stopped = false
-      intervalId = setInterval(tick, intervalMs)
-      tick()
-    },
-    stop: () => {
-      stopped = true
-      if (intervalId) clearInterval(intervalId)
-      intervalId = null
-    },
+    start: () => { step = 0; stopped = false; intervalId = setInterval(tick, intervalMs); tick() },
+    stop: () => { stopped = true; if (intervalId) clearInterval(intervalId); intervalId = null },
     getStep: () => step,
   }
 }

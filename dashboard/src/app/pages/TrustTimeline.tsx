@@ -185,9 +185,9 @@ const TrustTimeline: React.FC = () => {
   const metrics: Record<string, { label: string; color: string; icon: React.ReactNode; desc: string; data: number[]; currentValue: string }> = {
     trust: { label: 'Trust Score', color: '#10B981', icon: <Shield size={18} />, desc: 'Real-time behavioral trust T(t)', data: timeline.map(t => t.trust), currentValue: `${trustScore.toFixed(0)}%` },
     similarity: { label: 'Similarity', color: '#3B82F6', icon: <Fingerprint size={18} />, desc: 'Cosine similarity vs baseline', data: timeline.map(t => t.similarity * 100), currentValue: `${(similarity * 100).toFixed(1)}%` },
-    fraud: { label: 'Fraud Intent', color: '#EF4444', icon: <Target size={18} />, desc: 'ML-predicted fraud probability', data: timeline.map((_, i) => Math.min(100, fraudProbability * 100 + Math.sin(i * 0.5) * 10)), currentValue: `${(fraudProbability * 100).toFixed(0)}%` },
-    anomaly: { label: 'Anomaly', color: '#8B5CF6', icon: <Brain size={18} />, desc: 'Isolation forest anomaly score', data: timeline.map((_, i) => Math.min(100, anomalyScore * 100 + Math.sin(i * 0.7) * 8)), currentValue: `${(anomalyScore * 100).toFixed(0)}%` },
-    entropy: { label: 'Entropy', color: '#F59E0B', icon: <Activity size={18} />, desc: 'Behavioral entropy H(t)', data: timeline.map((_, i) => Math.min(100, entropy * 150 + Math.cos(i * 0.4) * 12)), currentValue: entropy.toFixed(3) },
+    fraud: { label: 'Fraud Intent', color: '#EF4444', icon: <Target size={18} />, desc: 'ML-predicted fraud probability', data: timeline.map(t => (t.fraud_probability ?? 0) * 100), currentValue: `${(fraudProbability * 100).toFixed(0)}%` },
+    anomaly: { label: 'Anomaly', color: '#8B5CF6', icon: <Brain size={18} />, desc: 'Isolation forest anomaly score', data: timeline.map(t => (t.anomaly_score ?? 0) * 100), currentValue: `${(anomalyScore * 100).toFixed(0)}%` },
+    entropy: { label: 'Entropy', color: '#F59E0B', icon: <Activity size={18} />, desc: 'Behavioral entropy H(t)', data: timeline.map(t => Math.min(100, (t.entropy ?? 0) * 150)), currentValue: entropy.toFixed(3) },
   }
 
   const active = metrics[activeMetric]
