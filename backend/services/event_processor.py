@@ -386,12 +386,18 @@ class EventProcessor:
             return {"error": "no_session", "message": "Call start_session first."}
 
         # ─── CHECK IF SESSION IS BLOCKED ───────────────────────────────────
+        # In demo mode, don't permanently block — allow recovery
+        import os
         if user_id in self._blocked_users:
-            return {
-                "error": "session_blocked",
-                "reason": self._blocked_users[user_id],
-                "action": "BLOCK",
-            }
+            if os.getenv("AEGISX_DEMO_MODE", "false").lower() == "true":
+                # Demo mode: clear block after returning it once, allow session to continue
+                self._blocked_users.pop(user_id, None)
+            else:
+                return {
+                    "error": "session_blocked",
+                    "reason": self._blocked_users[user_id],
+                    "action": "BLOCK",
+                }
 
         # ─── VALIDATE EVENT ────────────────────────────────────────────────
         validation = self._feature_engineer.validate_event(raw_event)

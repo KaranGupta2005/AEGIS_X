@@ -37,7 +37,13 @@ const LiveDemo: React.FC = () => {
   const [txSuccess, setTxSuccess] = useState(false)
   const [balance, setBalance] = useState(245000)
 
-  useEffect(() => { if (!isConnected) connect('normal') }, [])
+  const hasConnectedRef = useRef(false)
+  useEffect(() => {
+    if (!hasConnectedRef.current) {
+      hasConnectedRef.current = true
+      connect('normal')
+    }
+  }, [])
 
   // Live capture YOUR real keystrokes/mouse and send to backend
   useLiveCapture('demo_live_real_user', true)
