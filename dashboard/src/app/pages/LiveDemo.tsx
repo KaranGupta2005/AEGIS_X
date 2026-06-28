@@ -65,6 +65,10 @@ const LiveDemo: React.FC = () => {
     setBlocked(false)
     setStepUpShown(false)
     setTxSuccess(false)
+    // If we were blocked, restart the scenario with a fresh session
+    if (blocked) {
+      startScenario(activeScenario)
+    }
   }
 
   const handleConfirm = () => {
@@ -235,7 +239,10 @@ const LiveDemo: React.FC = () => {
                      'Anomalous behavior detected. Transaction paused for your safety.'}
                   </p>
                   <p style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 8, fontFamily: 'JetBrains Mono' }}>Trust: {trustScore.toFixed(0)}% · State: {cognitiveState.toUpperCase()}</p>
-                  <button onClick={resetFlow} style={{ marginTop: 16, padding: '8px 20px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#EF4444', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Close</button>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
+                    <button onClick={resetFlow} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#EF4444', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Close</button>
+                    <button onClick={() => startScenario(activeScenario)} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#10B981', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Restart Demo</button>
+                  </div>
                 </motion.div>
               </motion.div>
             )}

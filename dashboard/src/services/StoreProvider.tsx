@@ -24,7 +24,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const ws = createWebSocket(
       userId,
       (data: TrustUpdate) => {
-        dispatch({ type: 'TRUST_UPDATE', payload: data })
+        // Handle blocked session — stop simulator, don't freeze
+        if ((data as any).error === 'session_blocked' || (data as any).action === 'BLOCK') {
+          simRef.current?.stop()
+          simRef.current = null
+        }
+        // Only dispatch trust updates (not error responses)
+        if (data.type === 'trust_update' || data.trust_score !== undefined) {
+          dispatch({ type: 'TRUST_UPDATE', payload: data })
+        }
       },
       () => {
         dispatch({ type: 'SET_CONNECTED', payload: false })
