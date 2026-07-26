@@ -1,0 +1,35 @@
+# AEGIS-X Biometric AI Providers — Production Dependencies
+# ═══════════════════════════════════════════════════════════
+# Install: pip install -r requirements-biometric.txt
+#
+# NOTE: These are heavy ML dependencies (~3-5GB total).
+# Only install when deploying the real verification providers.
+# The mock providers require ZERO of these packages.
+
+# ── Core ML Runtime ───────────────────────────────────────
+torch>=2.0.0
+torchaudio>=2.0.0
+onnxruntime>=1.15.0
+numpy>=1.24.0
+scipy>=1.10.0
+
+# ── Voice: SpeechBrain ECAPA-TDNN ─────────────────────────
+speechbrain>=1.0.0
+
+# ── Face: InsightFace ─────────────────────────────────────
+insightface>=0.7.3
+onnx>=1.14.0
+
+# ── Liveness: MediaPipe Face Mesh ─────────────────────────
+mediapipe>=0.10.0
+
+# ── Image Processing ──────────────────────────────────────
+opencv-python-headless>=4.8.0
+Pillow>=10.0.0
+
+# ── Audio Processing ──────────────────────────────────────
+librosa>=0.10.0
+soundfile>=0.12.0
+
+# ── Encryption (embedding storage) ───────────────────────
+cryptography>=41.0.0

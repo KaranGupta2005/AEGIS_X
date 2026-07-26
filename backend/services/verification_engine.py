@@ -878,7 +878,45 @@ class AdaptiveVerificationEngine:
     # ═══════════════════════════════════════════════════════════════════════
 
     def _init_mock_providers(self):
-        """Register mock providers for development/demo mode."""
+        """
+        Register providers: prefer production AI providers if dependencies are available,
+        fall back to mock providers for demo/development mode.
+        """
+        # Try loading production providers (SpeechBrain, InsightFace, MediaPipe)
+        voice_verifier = None
+        voice_enrollment = None
+        face_verifier = None
+        face_enrollment = None
+        liveness = None
+
+        try:
+            from backend.services.providers.speechbrain_provider import (
+                SpeechBrainVoiceProvider, SpeechBrainEnrollmentProvider,
+            )
+            voice_verifier = SpeechBrainVoiceProvider()
+            voice_enrollment = SpeechBrainEnrollmentProvider()
+            print("[AEGIS-X] ✓ SpeechBrain voice providers registered.")
+        except Exception as e:
+            print(f"[AEGIS-X] SpeechBrain unavailable ({e}), using mock voice provider.")
+
+        try:
+            from backend.services.providers.insightface_provider import (
+                InsightFaceVerificationProvider, InsightFaceEnrollmentProvider,
+            )
+            face_verifier = InsightFaceVerificationProvider()
+            face_enrollment = InsightFaceEnrollmentProvider()
+            print("[AEGIS-X] ✓ InsightFace face providers registered.")
+        except Exception as e:
+            print(f"[AEGIS-X] InsightFace unavailable ({e}), using mock face provider.")
+
+        try:
+            from backend.services.providers.mediapipe_provider import MediaPipeLivenessProvider
+            liveness = MediaPipeLivenessProvider()
+            print("[AEGIS-X] ✓ MediaPipe liveness provider registered.")
+        except Exception as e:
+            print(f"[AEGIS-X] MediaPipe unavailable ({e}), using mock liveness provider.")
+
+        # Fall back to mocks for any unavailable providers
         from backend.services.providers.mock_providers import (
             MockVoiceVerificationProvider,
             MockFaceVerificationProvider,
@@ -887,11 +925,12 @@ class AdaptiveVerificationEngine:
             MockFaceEnrollmentProvider,
             MockDelegateVerificationProvider,
         )
-        self._registry.register_voice_verifier(MockVoiceVerificationProvider())
-        self._registry.register_face_verifier(MockFaceVerificationProvider())
-        self._registry.register_liveness(MockLivenessProvider())
-        self._registry.register_voice_enrollment(MockVoiceEnrollmentProvider())
-        self._registry.register_face_enrollment(MockFaceEnrollmentProvider())
+
+        self._registry.register_voice_verifier(voice_verifier or MockVoiceVerificationProvider())
+        self._registry.register_face_verifier(face_verifier or MockFaceVerificationProvider())
+        self._registry.register_liveness(liveness or MockLivenessProvider())
+        self._registry.register_voice_enrollment(voice_enrollment or MockVoiceEnrollmentProvider())
+        self._registry.register_face_enrollment(face_enrollment or MockFaceEnrollmentProvider())
         self._registry.register_delegate_verifier(MockDelegateVerificationProvider())
 
     def get_providers_status(self) -> Dict:
