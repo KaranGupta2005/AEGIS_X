@@ -3,37 +3,26 @@ Event Processor — Central Traffic Controller
 ================================================================
 The single entry point that connects the WebSocket layer to the Trust Pipeline.
 
-Without this:
-    WebSocket → Pipeline (tight coupling, messy)
-
-With this:
+Architecture:
     WebSocket → Event Processor → Pipeline → Session Update → Response Builder
-    (clean separation of concerns, testable, auditable)
 
 The Event Processor is responsible for:
-1. Receiving raw events from WebSocket
+1. Receiving aggregated BehaviorWindows from the continuous SDK (every 2s)
 2. Validating event structure
 3. Routing to the correct user session
 4. Executing the trust pipeline
-5. Updating session state (histories, velocities, alerts)
-6. Building the response payload
-7. Generating alerts if thresholds breached
-8. Writing audit log entries
-9. Persisting pipeline state to Redis for crash recovery (FIX #9)
+5. Maintaining the continuous session timeline (screen, activity, SDK state)
+6. Updating session state (histories, velocities, alerts)
+7. Building the response payload
+8. Generating alerts if thresholds breached
+9. Writing audit log entries
+10. Persisting pipeline state to Redis for crash recovery
 
-Architecture:
-    WebSocket Handler
-         ↓
-    EventProcessor.process_behavioral_event(user_id, raw_event, context)
-         ↓
-    ┌── Validation
-    ├── TrustPipeline.process(ctx, event)
-    ├── Alert Engine (generate alerts if needed)
-    ├── Audit Logger (record every decision)
-    ├── State Persistence (Redis snapshot every 5 events)
-    └── Response Builder (structured WebSocket payload)
-         ↓
-    TrustResponse → WebSocket → Client + Dashboard
+Continuous Monitoring Architecture:
+    Application Launch → SDK INITIALIZING → OBSERVING → LEARNING
+       → TRANSACTION → VERIFYING → OBSERVING → ... → FINISHED
+
+    Every screen contributes to trust — not just payment screens.
 """
 
 import numpy as np
@@ -46,6 +35,7 @@ from backend.services.trust_pipeline import TrustPipeline, PipelineContext, Trus
 from backend.services.baseline_service import BaselineService
 from backend.services.feature_engineering import FeatureEngineer
 from backend.services.cache_service import CacheService
+from backend.services.adaptive_learning import AdaptiveLearningService, LearningResult
 
 
 # Audit log directory
@@ -198,6 +188,7 @@ class EventProcessor:
         """Initialize all subsystems."""
         self._pipeline = TrustPipeline()
         self._baseline_service = BaselineService()
+        self._adaptive_learning = AdaptiveLearningService()
         self._feature_engineer = FeatureEngineer()
         self._alert_engine = AlertEngine()
         self._audit_logger = AuditLogger()
@@ -211,6 +202,17 @@ class EventProcessor:
         self._session_alerts: Dict[str, List[Dict]] = {}
         self._blocked_users: Dict[str, str] = {}  # user_id → block reason
 
+        # ── Continuous session state (new) ──────────────────────────────────
+        # Tracks the full lifecycle from app launch through session end
+        self._session_start_times: Dict[str, datetime] = {}
+        self._current_screens: Dict[str, str] = {}          # user_id → screen
+        self._sdk_states: Dict[str, str] = {}               # user_id → SDK state
+        self._current_activities: Dict[str, str] = {}       # user_id → activity label
+        self._session_timelines: Dict[str, List[Dict]] = {} # user_id → timeline entries
+        self._decision_histories: Dict[str, List[Dict]] = {} # user_id → decision log
+        self._trust_histories: Dict[str, List[float]] = {}  # user_id → trust score list
+        self._navigation_paths: Dict[str, List[str]] = {}   # user_id → screen path
+
     # ═══════════════════════════════════════════════════════════════════════
     # SESSION LIFECYCLE
     # ═══════════════════════════════════════════════════════════════════════
@@ -218,13 +220,18 @@ class EventProcessor:
     def start_session(self, user_id: str, session_id: str) -> Dict:
         """
         Initialize processing context for a new user session.
-        Loads baseline if available.
-        Attempts to restore pipeline state from Redis if session was interrupted (FIX #9).
+        Called at application launch — not at transaction start.
+        Loads adaptive behavioral profile (or falls back to legacy baseline).
         """
-        baseline, meta = self._baseline_service.load_baseline(user_id)
+        # Prefer adaptive profile over legacy baseline
+        baseline, meta = self._adaptive_learning.get_active_baseline(user_id)
+        if baseline is None:
+            # Fallback to legacy baseline service for backward compat
+            baseline, meta = self._baseline_service.load_baseline(user_id)
+
         ctx = self._pipeline.create_context(user_id=user_id, baseline=baseline)
 
-        # FIX #9: Attempt to restore pipeline state from Redis (crash recovery)
+        # Attempt to restore pipeline state from Redis (crash recovery)
         saved_state = self._cache.load_pipeline_state(user_id)
         if saved_state and saved_state.get("session_id") == session_id:
             self._restore_pipeline_context(ctx, saved_state)
@@ -233,11 +240,24 @@ class EventProcessor:
         self._session_ids[user_id] = session_id
         self._session_alerts[user_id] = []
 
+        # Initialize continuous session tracking
+        now = datetime.now(timezone.utc)
+        self._session_start_times[user_id] = now
+        self._current_screens[user_id] = "home"
+        self._sdk_states[user_id] = "OBSERVING"
+        self._current_activities[user_id] = "Session started"
+        self._session_timelines[user_id] = []
+        self._decision_histories[user_id] = []
+        self._trust_histories[user_id] = []
+        self._navigation_paths[user_id] = ["home"]
+
         self._cache.set_session_state(user_id, {
             "session_id": session_id,
             "has_baseline": baseline is not None,
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": now.isoformat(),
             "event_count": ctx.event_count,
+            "sdk_state": "OBSERVING",
+            "current_screen": "home",
         })
 
         return {
@@ -246,6 +266,8 @@ class EventProcessor:
             "has_baseline": baseline is not None,
             "status": "ready",
             "restored_events": ctx.event_count,
+            "sdk_state": "OBSERVING",
+            "started_at": now.isoformat(),
         }
 
     def end_session(self, user_id: str) -> Dict:
@@ -256,6 +278,16 @@ class EventProcessor:
         was_blocked = user_id in self._blocked_users
         self._blocked_users.pop(user_id, None)
 
+        # Clean up continuous session state
+        start_time = self._session_start_times.pop(user_id, None)
+        timeline = self._session_timelines.pop(user_id, [])
+        decision_history = self._decision_histories.pop(user_id, [])
+        self._current_screens.pop(user_id, None)
+        self._sdk_states.pop(user_id, None)
+        self._current_activities.pop(user_id, None)
+        self._trust_histories.pop(user_id, None)
+        nav_path = self._navigation_paths.pop(user_id, [])
+
         self._cache.delete_session_state(user_id)
         self._cache.delete_pipeline_state(user_id)
         self._cache.flush_user(user_id)
@@ -263,9 +295,35 @@ class EventProcessor:
         if ctx is None:
             return {"status": "not_found"}
 
-        # Capture final state before cleanup
+        # Compute session duration
+        now = datetime.now(timezone.utc)
+        duration_s = (now - start_time).total_seconds() if start_time else 0.0
+
         trust_history = ctx.trust_engine.get_trust_history()
         final_trust = trust_history[-1] if trust_history else 1.0
+
+        # ─── ADAPTIVE LEARNING: evaluate session for profile update ─────
+        learning_result_dict = None
+        trust_hist = self._trust_histories.get(user_id) or trust_history
+        if ctx.event_count >= 5 and trust_hist:
+            mean_trust = sum(trust_hist) / len(trust_hist) if trust_hist else final_trust
+            mean_similarity = float(ctx.history._scores[-1]) if len(ctx.history._scores) > 0 else 1.0
+
+            # Use baseline as proxy for session embedding (full impl accumulates per window)
+            session_embedding = ctx.baseline if ctx.is_enrolled else None
+            if session_embedding is not None:
+                learning_result = self._adaptive_learning.evaluate_session(
+                    user_id=user_id,
+                    session_embedding=session_embedding,
+                    trust_score=mean_trust,
+                    similarity=mean_similarity,
+                    drift_detected=ctx.cusum.is_drifting,
+                    drift_severity=getattr(ctx.cusum, 'severity', 'none') if ctx.cusum.is_drifting else 'none',
+                    cognitive_state="calm",
+                    session_windows=ctx.event_count,
+                    is_learning_candidate=not was_blocked,
+                )
+                learning_result_dict = learning_result.to_dict()
 
         return {
             "user_id": user_id,
@@ -276,6 +334,11 @@ class EventProcessor:
             "final_trust_score": round(final_trust, 4),
             "was_blocked": was_blocked,
             "drift_detected": ctx.cusum.is_drifting,
+            "duration_seconds": round(duration_s, 1),
+            "screens_visited": list(dict.fromkeys(nav_path)),  # unique ordered
+            "total_timeline_entries": len(timeline),
+            "total_decisions": len(decision_history),
+            "learning": learning_result_dict,
         }
 
     # ═══════════════════════════════════════════════════════════════════════
@@ -354,31 +417,23 @@ class EventProcessor:
         raw_event: Dict,
         transaction_amount: float = 0.0,
         is_new_beneficiary: bool = False,
+        sdk_context: Optional[Dict] = None,
     ) -> Dict:
         """
-        Process one behavioral heartbeat through the entire AEGIS-X engine.
+        Process one behavioral window through the full AEGIS-X trust pipeline.
 
-        THIS IS THE SINGLE FUNCTION THAT MAKES EVERYTHING WORK.
+        Called every 2 seconds from application launch onward — not just during
+        payment. This is what makes AEGIS-X a continuous authentication platform.
 
         Args:
             user_id: User identifier.
-            raw_event: Raw 16-feature behavioral telemetry from SDK.
-            transaction_amount: Pending transaction amount (₹).
-            is_new_beneficiary: Whether target account is new/unknown.
+            raw_event: Aggregated 16-feature behavioral window from SDK.
+            transaction_amount: Active transaction amount (₹0 if not in payment).
+            is_new_beneficiary: Whether transfer target is new/unknown.
+            sdk_context: Optional enriched context (screen, SDK state, navigation).
 
         Returns:
-            Complete structured response for WebSocket transmission:
-            {
-                "trust_score": 0.92,
-                "decision": "ALLOW",
-                "cognitive_state": "calm",
-                "drift_detected": false,
-                "velocity": -0.001,
-                "alerts": [],
-                "event_number": 5,
-                "latency_ms": 65.2,
-                ...
-            }
+            Complete structured response with trust assessment + session context.
         """
         # ─── GET CONTEXT ───────────────────────────────────────────────────
         ctx = self._contexts.get(user_id)
@@ -386,11 +441,9 @@ class EventProcessor:
             return {"error": "no_session", "message": "Call start_session first."}
 
         # ─── CHECK IF SESSION IS BLOCKED ───────────────────────────────────
-        # In demo mode, don't permanently block — allow recovery
         import os
         if user_id in self._blocked_users:
             if os.getenv("AEGISX_DEMO_MODE", "false").lower() == "true":
-                # Demo mode: clear block after returning it once, allow session to continue
                 self._blocked_users.pop(user_id, None)
             else:
                 return {
@@ -398,6 +451,19 @@ class EventProcessor:
                     "reason": self._blocked_users[user_id],
                     "action": "BLOCK",
                 }
+
+        # ─── UPDATE CONTINUOUS SESSION STATE ──────────────────────────────
+        if sdk_context:
+            screen = sdk_context.get("current_screen", self._current_screens.get(user_id, "home"))
+            sdk_state = sdk_context.get("sdk_state", self._sdk_states.get(user_id, "OBSERVING"))
+            self._current_screens[user_id] = screen
+            self._sdk_states[user_id] = sdk_state
+
+            # Update navigation path if screen changed
+            nav_path = self._navigation_paths.get(user_id, [])
+            if not nav_path or nav_path[-1] != screen:
+                nav_path.append(screen)
+                self._navigation_paths[user_id] = nav_path[-50:]  # cap at 50
 
         # ─── VALIDATE EVENT ────────────────────────────────────────────────
         validation = self._feature_engineer.validate_event(raw_event)
@@ -431,9 +497,35 @@ class EventProcessor:
             transaction_amount=transaction_amount,
         )
 
-        # ─── FIX #9: PERSIST PIPELINE STATE (every N events) ──────────────
+        # ─── PERSIST PIPELINE STATE (every N events) ──────────────────────
         if ctx.event_count % STATE_PERSIST_INTERVAL == 0:
             self._persist_pipeline_state(user_id, ctx, session_id)
+
+        # ─── UPDATE CONTINUOUS TIMELINE ───────────────────────────────────
+        timeline_entry = {
+            "timestamp": result.timestamp,
+            "trust_score": round(result.trust_score, 4),
+            "decision": result.decision,
+            "cognitive_state": result.cognitive_state,
+            "sdk_state": self._sdk_states.get(user_id, "OBSERVING"),
+            "current_screen": self._current_screens.get(user_id, "home"),
+            "event_number": result.event_number,
+        }
+        self._session_timelines.setdefault(user_id, []).append(timeline_entry)
+        # Keep last 200 entries in memory
+        if len(self._session_timelines[user_id]) > 200:
+            self._session_timelines[user_id] = self._session_timelines[user_id][-200:]
+
+        # Track trust history
+        self._trust_histories.setdefault(user_id, []).append(result.trust_score)
+
+        # Log to decision history
+        self._decision_histories.setdefault(user_id, []).append({
+            "timestamp": result.timestamp,
+            "decision": result.decision,
+            "trust_score": round(result.trust_score, 4),
+            "screen": self._current_screens.get(user_id, "home"),
+        })
 
         # ─── TRACK BLOCK STATE ─────────────────────────────────────────────
         if result.decision == "BLOCK":
@@ -455,13 +547,23 @@ class EventProcessor:
         """
         Build the structured WebSocket response payload.
 
-        This is the API CONTRACT — every frontend (SDK, dashboard, monitoring)
-        consumes this exact format.
+        This is the API CONTRACT — every frontend consumer (SDK, dashboard, monitoring)
+        consumes this exact format. Backward compatible: all existing fields preserved,
+        session_context added as an extension.
         """
+        session_id = self._session_ids.get(user_id, "")
+        current_screen = self._current_screens.get(user_id, "home")
+        sdk_state = self._sdk_states.get(user_id, "OBSERVING")
+        start_time = self._session_start_times.get(user_id)
+        session_duration_s = (
+            (datetime.now(timezone.utc) - start_time).total_seconds()
+            if start_time else 0.0
+        )
+
         response = {
             "type": "trust_update",
             "user_id": user_id,
-            "session_id": self._session_ids.get(user_id, ""),
+            "session_id": session_id,
             "timestamp": result.timestamp,
 
             "trust_score": round(result.trust_score, 4),
@@ -502,6 +604,14 @@ class EventProcessor:
             "event_number": result.event_number,
             "latency_ms": round(result.latency_ms, 1),
             "confidence": round(result.confidence, 4),
+
+            # ── Continuous session context (new) ─────────────────────────
+            "session_context": {
+                "sdk_state": sdk_state,
+                "current_screen": current_screen,
+                "session_duration_s": round(session_duration_s, 1),
+                "navigation_path": self._navigation_paths.get(user_id, [])[-10:],
+            },
         }
 
         self._cache.set_trust_score(user_id, {
@@ -509,6 +619,8 @@ class EventProcessor:
             "decision": response["decision"],
             "cognitive_state": response["cognitive_state"],
             "fraud_probability": response["fraud"]["probability"],
+            "current_screen": current_screen,
+            "sdk_state": sdk_state,
         })
 
         if alerts:
@@ -535,6 +647,36 @@ class EventProcessor:
     def get_active_users(self) -> List[str]:
         """List all users with active processing contexts."""
         return list(self._contexts.keys())
+
+    def get_session_timeline(self, user_id: str) -> List[Dict]:
+        """Return the full continuous session timeline (screen, trust, decision, SDK state)."""
+        return self._session_timelines.get(user_id, [])
+
+    def get_session_summary(self, user_id: str) -> Dict:
+        """Return a rich summary of the current continuous session."""
+        ctx = self._contexts.get(user_id)
+        if ctx is None:
+            return {}
+        start_time = self._session_start_times.get(user_id)
+        duration_s = (
+            (datetime.now(timezone.utc) - start_time).total_seconds()
+            if start_time else 0.0
+        )
+        trust_hist = self._trust_histories.get(user_id, [])
+        return {
+            "user_id": user_id,
+            "session_id": self._session_ids.get(user_id, ""),
+            "sdk_state": self._sdk_states.get(user_id, "OBSERVING"),
+            "current_screen": self._current_screens.get(user_id, "home"),
+            "current_activity": self._current_activities.get(user_id, ""),
+            "duration_seconds": round(duration_s, 1),
+            "event_count": ctx.event_count,
+            "navigation_path": self._navigation_paths.get(user_id, []),
+            "trust_history": [round(t, 4) for t in trust_hist[-50:]],
+            "timeline_length": len(self._session_timelines.get(user_id, [])),
+            "total_alerts": len(self._session_alerts.get(user_id, [])),
+            "total_decisions": len(self._decision_histories.get(user_id, [])),
+        }
 
     @property
     def active_user_count(self) -> int:

@@ -3,7 +3,6 @@ import { motion } from 'motion/react'
 import { User, Phone, Bot } from 'lucide-react'
 import { useStore } from '../../services/store'
 import { SimulatorScenario } from '../../services/api'
-import { useLiveCapture } from '../../services/useLiveCapture'
 import { BankingApp } from '../../components/payment/BankingApp'
 import { AegisConsole } from '../../components/sdk/AegisConsole'
 
@@ -14,11 +13,10 @@ const SCENARIOS = [
 ]
 
 const LiveDemo: React.FC = () => {
-  const { state, connect, switchScenario } = useStore()
-  const { trustScore, decision, cognitiveState, isConnected, eventCount } = state
+  const { state, connect, switchScenario, dispatch } = useStore()
+  const { trustScore, decision, cognitiveState, isConnected, eventCount, sdkState, liveActivity } = state
 
   const [activeScenario, setActiveScenario] = useState<SimulatorScenario>('normal')
-  const [currentPage, setCurrentPage] = useState('home')
 
   const hasConnectedRef = useRef(false)
   useEffect(() => {
@@ -28,7 +26,12 @@ const LiveDemo: React.FC = () => {
     }
   }, [])
 
-  useLiveCapture('demo_live_real_user', true)
+  const handleScreenChange = (screen: string) => {
+    dispatch({
+      type: 'SDK_STATE_CHANGE',
+      payload: { sdkState, currentScreen: screen as any },
+    })
+  }
 
   const startScenario = (s: SimulatorScenario) => {
     setActiveScenario(s)
@@ -93,12 +96,13 @@ const LiveDemo: React.FC = () => {
           trustScore={trustScore}
           decision={decision}
           cognitiveState={cognitiveState}
+          onScreenChange={handleScreenChange}
         />
 
         {/* RIGHT: AEGIS-X Console */}
         <AegisConsole
           state={state}
-          currentPage={currentPage}
+          currentPage={liveActivity.currentPage}
         />
       </div>
     </div>

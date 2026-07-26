@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List, Dict
 
 
 class StartSessionRequest(BaseModel):
@@ -9,6 +9,20 @@ class StartSessionRequest(BaseModel):
 class EndSessionRequest(BaseModel):
     user_id: str = Field(..., min_length=1)
     session_id: Optional[str] = None
+
+
+class SDKContext(BaseModel):
+    """Rich session context from the continuous monitoring SDK."""
+    sdk_state: str = Field(default="OBSERVING")
+    current_screen: str = Field(default="home")
+    navigation_depth: int = Field(default=1, ge=0)
+    time_on_screen: float = Field(default=0.0, ge=0)
+    idle_ratio: float = Field(default=0.0, ge=0, le=1)
+    hour_of_day: int = Field(default=12, ge=0, le=23)
+    day_of_week: int = Field(default=0, ge=0, le=6)
+    transaction_category: str = Field(default="idle")
+    transaction_count: int = Field(default=0, ge=0)
+    window_id: int = Field(default=0, ge=0)
 
 
 class BehavioralEventRequest(BaseModel):
@@ -31,6 +45,8 @@ class BehavioralEventRequest(BaseModel):
     interaction_intensity: int = Field(..., ge=0, le=100)
     transaction_amount: float = Field(default=0.0, ge=0)
     is_new_beneficiary: bool = Field(default=False)
+    # Optional enriched SDK context — not required for backward compatibility
+    sdk_context: Optional[SDKContext] = None
 
     def to_event_dict(self) -> dict:
         return {

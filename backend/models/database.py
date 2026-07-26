@@ -178,6 +178,86 @@ class AuditLog(Base):
     )
 
 
+class BehaviorProfile(Base):
+    """
+    Versioned behavioral profile — never overwrites previous versions.
+    Supports full profile rollback and audit history.
+    """
+    __tablename__ = "behavior_profiles"
+
+    id = Column(String(64), primary_key=True, default=generate_uuid)
+    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    # Embeddings (stored as JSON-serialized float arrays)
+    composite_baseline_blob = Column(Text, nullable=True)
+    typing_baseline_blob = Column(Text, nullable=True)
+    touch_baseline_blob = Column(Text, nullable=True)
+    navigation_baseline_blob = Column(Text, nullable=True)
+
+    # Statistical model
+    embedding_mean_blob = Column(Text, nullable=True)
+    embedding_std_blob = Column(Text, nullable=True)
+    embedding_samples = Column(Integer, default=0)
+
+    # Profile quality metrics
+    confidence = Column(Float, default=0.0)
+    maturity_score = Column(Float, default=0.0)
+    mean_trust_score = Column(Float, default=0.95)
+    min_trust_observed = Column(Float, default=1.0)
+    trust_variance = Column(Float, default=0.0)
+
+    # Adaptive thresholds (JSON)
+    adaptive_thresholds = Column(JSON, default=dict)
+
+    # Session counters
+    total_sessions = Column(Integer, default=0)
+    trusted_sessions = Column(Integer, default=0)
+    rejected_sessions = Column(Integer, default=0)
+    update_count = Column(Integer, default=0)
+
+    # Learning metadata
+    learning_decision = Column(String(16), nullable=True)   # LEARN / OBSERVE / REJECT
+    learning_reason = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)               # Only one active version per user
+
+    __table_args__ = (
+        Index("ix_behavior_profiles_user_version", "user_id", "version"),
+        Index("ix_behavior_profiles_user_active", "user_id", "is_active"),
+        UniqueConstraint("user_id", "version", name="uq_behavior_profiles_user_version"),
+    )
+
+
+class LearningAuditLog(Base):
+    """
+    Records every adaptive learning decision for compliance and explainability.
+    """
+    __tablename__ = "learning_audit_logs"
+
+    id = Column(String(64), primary_key=True, default=generate_uuid)
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    session_id = Column(String(64), nullable=False)
+    decision = Column(String(16), nullable=False)         # LEARN / OBSERVE / REJECT
+    reason = Column(Text, nullable=False)
+    explanation = Column(Text, nullable=True)
+    trust_score = Column(Float, nullable=False)
+    similarity = Column(Float, nullable=False)
+    drift_detected = Column(Boolean, default=False)
+    consistency_check_passed = Column(Boolean, default=True)
+    rate_limit_ok = Column(Boolean, default=True)
+    session_windows = Column(Integer, default=0)
+    old_version = Column(Integer, nullable=True)
+    new_version = Column(Integer, nullable=True)
+    profile_updated = Column(Boolean, default=False)
+
+    __table_args__ = (
+        Index("ix_learning_audit_user_ts", "user_id", "timestamp"),
+        Index("ix_learning_audit_decision", "decision"),
+    )
+
+
 engine = None
 SessionLocal = None
 

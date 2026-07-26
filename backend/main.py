@@ -175,6 +175,8 @@ async def websocket_sdk(websocket: WebSocket, user_id: str, session_id: Optional
                 raw_event = message.get("event", message)
                 tx_amount = message.get("transaction_amount", 0.0)
                 is_new_ben = message.get("is_new_beneficiary", False)
+                # Extract enriched SDK context if the continuous monitoring SDK sent it
+                sdk_context = message.get("sdk_context", None)
 
                 try:
                     result = processor.process_behavioral_event(
@@ -182,6 +184,7 @@ async def websocket_sdk(websocket: WebSocket, user_id: str, session_id: Optional
                         raw_event=raw_event,
                         transaction_amount=tx_amount,
                         is_new_beneficiary=is_new_ben,
+                        sdk_context=sdk_context,
                     )
                     await websocket.send_json(result)
                     await connection_manager.broadcast_to_dashboards({"user_id": user_id, **result})
@@ -192,6 +195,8 @@ async def websocket_sdk(websocket: WebSocket, user_id: str, session_id: Optional
                             "user_id": user_id,
                             "trust_score": result.get("trust_score"),
                             "cognitive_state": result.get("cognitive_state"),
+                            "current_screen": result.get("session_context", {}).get("current_screen", "unknown"),
+                            "sdk_state": result.get("session_context", {}).get("sdk_state", "OBSERVING"),
                         })
                 except Exception as proc_err:
                     print(f"[AEGIS-X] Processing error for {user_id}: {proc_err}")
@@ -221,9 +226,20 @@ async def websocket_dashboard(websocket: WebSocket):
         while True:
             raw_message = await websocket.receive_text()
             message = json.loads(raw_message)
-            if message.get("type") == "get_sessions":
-                processor = get_processor()
-                await websocket.send_json({"type": "session_list", "users": processor.get_active_users()})
+            msg_type = message.get("type", "")
+            processor = get_processor()
+
+            if msg_type == "get_sessions":
+                await websocket.send_json({
+                    "type": "session_list",
+                    "users": processor.get_active_users(),
+                })
+            elif msg_type == "get_session_summary":
+                uid = message.get("user_id", "")
+                summary = processor.get_session_summary(uid)
+                await websocket.send_json({"type": "session_summary", **summary})
+            elif msg_type == "ping":
+                await websocket.send_json({"type": "pong"})
     except WebSocketDisconnect:
         pass
     finally:

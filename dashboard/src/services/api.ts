@@ -58,6 +58,13 @@ export interface TrustUpdate {
   event_number: number
   latency_ms: number
   confidence: number
+  // Continuous monitoring context (added by continuous SDK)
+  session_context?: {
+    sdk_state: string
+    current_screen: string
+    session_duration_s: number
+    navigation_path: string[]
+  }
 }
 
 export interface SessionInfo {
@@ -130,6 +137,41 @@ export async function getExplanation(params: {
 export async function getSessionSummary(userId: string) {
   const res = await fetch(`${API_BASE}/audit/session/${userId}/summary`)
   if (!res.ok) return null
+  return res.json()
+}
+
+// ─── CONTINUOUS MONITORING ENDPOINTS ────────────────────────────────────────
+
+export interface SessionSummary {
+  user_id: string
+  session_id: string
+  sdk_state: string
+  current_screen: string
+  current_activity: string
+  duration_seconds: number
+  event_count: number
+  navigation_path: string[]
+  trust_history: number[]
+  timeline_length: number
+  total_alerts: number
+  total_decisions: number
+}
+
+export async function getSessionSummaryMonitor(userId: string): Promise<SessionSummary | null> {
+  const res = await fetch(`${API_BASE}/session/${userId}/summary`)
+  if (!res.ok) return null
+  return res.json()
+}
+
+export async function getSessionTimeline(userId: string, limit = 100) {
+  const res = await fetch(`${API_BASE}/session/${userId}/timeline?limit=${limit}`)
+  if (!res.ok) return null
+  return res.json()
+}
+
+export async function getSessionsOverview() {
+  const res = await fetch(`${API_BASE}/sessions/overview`)
+  if (!res.ok) return { sessions: [], count: 0 }
   return res.json()
 }
 

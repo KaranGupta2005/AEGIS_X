@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { AlertTriangle, Lock, Home, Clock, QrCode, User } from 'lucide-react'
 import { HomeScreen } from './HomeScreen'
@@ -9,6 +9,7 @@ import {
   TransactionHistoryScreen, ProfileScreen,
 } from './UtilityScreens'
 import { ACCOUNT } from './bankData'
+import { aegisSDK } from '../../services/sdk/AegisBehavioralSDK'
 
 type Screen =
   | 'home' | 'send' | 'history' | 'scan' | 'profile'
@@ -20,16 +21,44 @@ interface BankingAppProps {
   trustScore: number
   decision: string
   cognitiveState: string
+  onScreenChange?: (screen: string) => void
 }
 
-export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, cognitiveState }) => {
+export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, cognitiveState, onScreenChange }) => {
   const [screen, setScreen] = useState<Screen>('home')
   const [flowStep, setFlowStep] = useState<FlowStep>('contacts')
   const [balance, setBalance] = useState(ACCOUNT.balance)
   const [blocked, setBlocked] = useState(false)
   const [stepUp, setStepUp] = useState(false)
 
-  const goHome = () => setScreen('home')
+  // Notify SDK and parent of every screen transition
+  const navigateTo = (s: Screen) => {
+    setScreen(s)
+    aegisSDK.notifyScreenChange(s)
+    onScreenChange?.(s)
+  }
+
+  const navigateToFlowScreen = (step: FlowStep) => {
+    const stepScreenMap: Record<FlowStep, string> = {
+      contacts: 'transfer',
+      amount: 'amount',
+      review: 'review',
+      pin: 'pin',
+      processing: 'pin',
+      success: 'success',
+    }
+    aegisSDK.notifyScreenChange(stepScreenMap[step])
+    onScreenChange?.(stepScreenMap[step])
+    setFlowStep(step)
+  }
+
+  // On mount: report initial screen to SDK
+  useEffect(() => {
+    aegisSDK.notifyScreenChange('home')
+    onScreenChange?.('home')
+  }, [])
+
+  const goHome = () => navigateTo('home')
 
   const navItems = [
     { key: 'home' as Screen, icon: Home,    label: 'Home' },
@@ -44,12 +73,15 @@ export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, co
         return (
           <SendMoneyFlow
             trustScore={trustScore}
-            onBack={() => { setScreen('home'); setFlowStep('contacts') }}
+            onBack={() => { navigateTo('home'); navigateToFlowScreen('contacts') }}
             onBlock={() => setBlocked(true)}
             onStepUp={() => setStepUp(true)}
-            onSuccess={(amt) => setBalance(b => b - amt)}
+            onSuccess={(amt) => {
+              setBalance(b => b - amt)
+              aegisSDK.setTransactionContext({ frequency: (aegisSDK.session?.navigationPath.filter(s => s === 'success').length ?? 0) + 1 })
+            }}
             currentStep={flowStep}
-            onStepChange={setFlowStep}
+            onStepChange={navigateToFlowScreen}
           />
         )
       case 'qr':          return <QRScanScreen onBack={goHome} />
@@ -66,8 +98,8 @@ export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, co
             balance={balance}
             trustScore={trustScore}
             onNavigate={(s) => {
-              if (s === 'send') setFlowStep('contacts')
-              setScreen(s as Screen)
+              if (s === 'send') navigateToFlowScreen('contacts')
+              navigateTo(s as Screen)
             }}
           />
         )
@@ -97,7 +129,7 @@ export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, co
           const Icon = item.icon
           const active = screen === item.key || (item.key === 'home' && isUtility && screen !== 'qr')
           return (
-            <motion.button key={item.key} whileTap={{ scale: 0.88 }} onClick={() => setScreen(item.key)}
+            <motion.button key={item.key} whileTap={{ scale: 0.88 }} onClick={() => navigateTo(item.key)}
               style={{ flex: 1, padding: '8px 4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
               <motion.div animate={{ color: active ? '#10B981' : 'rgba(255,255,255,0.28)' }}>
                 <Icon size={16} />

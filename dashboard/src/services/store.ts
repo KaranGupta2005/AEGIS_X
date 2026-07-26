@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useCallback, useRef, useEffect } from 'react'
 import { TrustUpdate, createWebSocket, createSimulator, SimulatorScenario } from './api'
+import { SDKState, AppScreen } from './sdk/AegisBehavioralSDK'
 
 export interface TimelineEntry {
   time: string
@@ -13,6 +14,9 @@ export interface TimelineEntry {
   fraud_probability: number
   entropy: number
   velocity: number
+  // Continuous monitoring additions
+  sdk_state: SDKState
+  current_screen: AppScreen
 }
 
 export interface AlertEntry {
@@ -23,11 +27,27 @@ export interface AlertEntry {
   cognitive_state: string
 }
 
+// ─── CONTINUOUS MONITORING STATE ────────────────────────────────────────────
+
+export interface LiveSessionActivity {
+  currentActivity: string          // human-readable description of what user is doing
+  currentPage: AppScreen
+  sessionDurationMs: number
+  activeTimeMs: number
+  idleTimeMs: number
+  collectedWindows: number
+  behaviorConfidence: number       // 0–1: how well the behavioral baseline is established
+}
+
 export interface SessionState {
   isConnected: boolean
   userId: string
   sessionId: string
   scenario: SimulatorScenario
+
+  // ── Continuous monitoring (NEW) ──────────────────────────────────────
+  sdkState: SDKState
+  liveActivity: LiveSessionActivity
   trustScore: number
   effectiveTrust: number
   decision: string
@@ -61,6 +81,19 @@ const initialState: SessionState = {
   userId: 'demo_user',
   sessionId: '',
   scenario: 'normal',
+
+  // Continuous monitoring defaults
+  sdkState: 'INITIALIZING',
+  liveActivity: {
+    currentActivity: 'Initializing',
+    currentPage: 'launch',
+    sessionDurationMs: 0,
+    activeTimeMs: 0,
+    idleTimeMs: 0,
+    collectedWindows: 0,
+    behaviorConfidence: 0,
+  },
+
   trustScore: 95,
   effectiveTrust: 95,
   decision: 'ALLOW',
@@ -94,6 +127,8 @@ type Action =
   | { type: 'SET_SESSION'; payload: { userId: string; sessionId: string } }
   | { type: 'SET_SCENARIO'; payload: SimulatorScenario }
   | { type: 'TRUST_UPDATE'; payload: TrustUpdate }
+  | { type: 'SDK_STATE_CHANGE'; payload: { sdkState: SDKState; currentScreen: AppScreen } }
+  | { type: 'LIVE_ACTIVITY_UPDATE'; payload: Partial<LiveSessionActivity> }
   | { type: 'RESET' }
 
 function reducer(state: SessionState, action: Action): SessionState {
@@ -103,10 +138,34 @@ function reducer(state: SessionState, action: Action): SessionState {
     case 'SET_SESSION':
       return { ...state, userId: action.payload.userId, sessionId: action.payload.sessionId }
     case 'SET_SCENARIO':
-      return { ...initialState, scenario: action.payload, isConnected: state.isConnected }
+      return {
+        ...initialState,
+        scenario: action.payload,
+        isConnected: state.isConnected,
+        sdkState: state.sdkState,
+        liveActivity: state.liveActivity,
+      }
+    case 'SDK_STATE_CHANGE':
+      return {
+        ...state,
+        sdkState: action.payload.sdkState,
+        liveActivity: {
+          ...state.liveActivity,
+          currentPage: action.payload.currentScreen,
+          currentActivity: _describeActivity(action.payload.sdkState, action.payload.currentScreen),
+        },
+      }
+    case 'LIVE_ACTIVITY_UPDATE':
+      return {
+        ...state,
+        liveActivity: { ...state.liveActivity, ...action.payload },
+      }
     case 'TRUST_UPDATE': {
       const d = action.payload
       const ts = d.trust_score ?? d.effective_trust ?? state.trustScore
+      // Sync SDK state / screen from backend session_context if present
+      const backendScreen = d.session_context?.current_screen ?? state.liveActivity.currentPage
+      const backendSdkState = (d.session_context?.sdk_state as SDKState) ?? state.sdkState
       const newEntry: TimelineEntry = {
         time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
         trust: ts * 100,
@@ -119,6 +178,8 @@ function reducer(state: SessionState, action: Action): SessionState {
         fraud_probability: d.fraud?.probability ?? state.fraudProbability,
         entropy: d.temporal?.entropy ?? state.entropy,
         velocity: d.temporal?.velocity ?? state.velocity,
+        sdk_state: backendSdkState,
+        current_screen: backendScreen,
       }
       const newAlerts: AlertEntry[] = (d.alerts || []).map((a: any) => ({
         severity: a.severity,
@@ -127,6 +188,8 @@ function reducer(state: SessionState, action: Action): SessionState {
         trust_score: a.trust_score ?? ts,
         cognitive_state: a.cognitive_state ?? d.cognitive_state,
       }))
+      const newWindowCount = (d.event_number ?? state.eventCount + 1)
+      const behaviorConfidence = Math.min(1, newWindowCount / 15)
       return {
         ...state,
         trustScore: ts * 100,
@@ -142,7 +205,7 @@ function reducer(state: SessionState, action: Action): SessionState {
         acceleration: d.temporal?.acceleration ?? state.acceleration,
         trend: d.temporal?.trend ?? state.trend,
         entropy: d.temporal?.entropy ?? state.entropy,
-        eventCount: d.event_number ?? state.eventCount + 1,
+        eventCount: newWindowCount,
         latencyMs: d.latency_ms ?? state.latencyMs,
         confidence: d.confidence ?? state.confidence,
         reasons: d.reasons ?? state.reasons,
@@ -155,6 +218,16 @@ function reducer(state: SessionState, action: Action): SessionState {
         fraudProbability: d.fraud?.probability ?? state.fraudProbability,
         fraudTrajectory: d.fraud?.trajectory ?? state.fraudTrajectory,
         intentVector: d.fraud?.intent_vector ?? state.intentVector,
+        liveActivity: {
+          ...state.liveActivity,
+          collectedWindows: newWindowCount,
+          behaviorConfidence,
+          currentPage: backendScreen,
+          sessionDurationMs: d.session_context
+            ? (d.session_context.session_duration_s * 1000)
+            : state.liveActivity.sessionDurationMs,
+        },
+        sdkState: backendSdkState,
       }
     }
     case 'RESET':
@@ -162,6 +235,47 @@ function reducer(state: SessionState, action: Action): SessionState {
     default:
       return state
   }
+}
+
+// ─── ACTIVITY DESCRIPTION HELPER ────────────────────────────────────────────
+
+function _describeActivity(sdkState: SDKState, screen: AppScreen): string {
+  const screenLabels: Record<string, string> = {
+    launch: 'Launching app',
+    home: 'Browsing home',
+    history: 'Viewing transaction history',
+    bills: 'Viewing bills',
+    transfer: 'Initiating transfer',
+    send: 'Initiating transfer',
+    amount: 'Entering amount',
+    review: 'Reviewing transaction',
+    pin: 'Entering PIN',
+    success: 'Transaction complete',
+    profile: 'Viewing profile',
+    scan: 'Scanning QR code',
+    qr: 'Scanning QR code',
+    mobile: 'Mobile recharge',
+    electricity: 'Paying electricity bill',
+    fasttag: 'FASTag recharge',
+    insurance: 'Insurance payment',
+    credit: 'Credit card payment',
+  }
+
+  const statePrefix: Record<SDKState, string> = {
+    INITIALIZING: 'Starting up',
+    OBSERVING: 'Observing',
+    LEARNING: 'Learning baseline',
+    TRANSACTION: 'In transaction',
+    VERIFYING: 'Verifying identity',
+    FINISHED: 'Session ended',
+  }
+
+  const screenLabel = screenLabels[screen] ?? `On ${screen}`
+  if (sdkState === 'INITIALIZING') return 'Initializing SDK'
+  if (sdkState === 'TRANSACTION') return `Transaction — ${screenLabel}`
+  if (sdkState === 'VERIFYING') return `Verifying — ${screenLabel}`
+  if (sdkState === 'FINISHED') return 'Session ended'
+  return `${statePrefix[sdkState]} — ${screenLabel}`
 }
 
 interface StoreContextType {
