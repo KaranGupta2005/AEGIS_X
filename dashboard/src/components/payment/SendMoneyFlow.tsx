@@ -28,6 +28,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
   const [challenge, setChallenge] = useState<VerificationChallenge | null>(null)
   const [verifying, setVerifying] = useState(false)
   const [verificationResult, setVerificationResult] = useState<string | null>(null)
+  const [trustAtPayment, setTrustAtPayment] = useState(95) // Captured at payment time
   const inputRef = useRef<HTMLInputElement>(null)
 
   const steps = ['contacts', 'amount', 'review', 'pin', 'processing', 'success']
@@ -39,19 +40,23 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
   }
 
   const handleConfirmPay = async () => {
+    // Capture trust at this exact moment — don't let live updates change the decision
+    const currentTrust = trustScore
+    setTrustAtPayment(currentTrust)
+
     // AEGIS-X Adaptive Verification Flow:
     // Trust > 85%  → Direct to MPIN (frictionless)
     // Trust 50-85% → Voice Challenge first, then MPIN
     // Trust < 50%  → Face Liveness first, then MPIN
     // BLOCK only happens if verification FAILS — never preemptively
 
-    if (trustScore < 50) {
+    if (currentTrust < 50) {
       // Face Liveness required
       try {
         const ch = await initiateVerification({
           user_id: 'demo_user',
           session_id: 'sess_payment',
-          trust_score: trustScore / 100,
+          trust_score: currentTrust / 100,
           cognitive_state: 'distressed',
           drift_detected: true,
           drift_severity: 'high',
@@ -71,13 +76,13 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
       return
     }
 
-    if (trustScore < 85) {
+    if (currentTrust < 85) {
       // Voice Challenge required
       try {
         const ch = await initiateVerification({
           user_id: 'demo_user',
           session_id: 'sess_payment',
-          trust_score: trustScore / 100,
+          trust_score: currentTrust / 100,
           cognitive_state: 'focused',
           drift_detected: false,
           transaction_amount: Number(amount),
@@ -383,7 +388,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
                 </motion.button>
               )}
               <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.2)', fontFamily: 'JetBrains Mono', marginTop: 12 }}>
-                AEGIS-X · Speaker Verification · T(t)={trustScore.toFixed(0)}%
+                AEGIS-X · Speaker Verification · T(t)={trustAtPayment.toFixed(0)}%
               </div>
             </motion.div>
           )}
@@ -419,7 +424,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
                 </motion.button>
               )}
               <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.2)', fontFamily: 'JetBrains Mono', marginTop: 12 }}>
-                AEGIS-X · Face Liveness · T(t)={trustScore.toFixed(0)}%
+                AEGIS-X · Face Liveness · T(t)={trustAtPayment.toFixed(0)}%
               </div>
             </motion.div>
           )}
