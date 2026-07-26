@@ -138,23 +138,30 @@ function FaceEnrollStep({ enrolled, onEnroll }: { enrolled: boolean; onEnroll: (
   const [stream, setStream] = useState<MediaStream | null>(null)
   const videoRef = React.useRef<HTMLVideoElement>(null)
 
+  // Attach stream to video element when both are available
+  React.useEffect(() => {
+    if (stream && videoRef.current) {
+      videoRef.current.srcObject = stream
+      videoRef.current.play().catch(() => {})
+    }
+  }, [stream])
+
   const startCapture = async () => {
     setCapturing(true)
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 320 } })
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 320 } }
+      })
       setStream(mediaStream)
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream
-        videoRef.current.play()
-      }
-      // Capture for 2.5 seconds then complete
+      // Capture for 3 seconds then complete
       setTimeout(() => {
         mediaStream.getTracks().forEach(t => t.stop())
         setStream(null)
         setCapturing(false)
         onEnroll()
-      }, 2500)
-    } catch {
+      }, 3000)
+    } catch (err) {
+      console.warn('[AEGIS-X] Camera unavailable:', err)
       // Camera unavailable — simulate enrollment
       setTimeout(() => { setCapturing(false); onEnroll() }, 2000)
     }
@@ -171,10 +178,13 @@ function FaceEnrollStep({ enrolled, onEnroll }: { enrolled: boolean; onEnroll: (
       >
         {enrolled ? (
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}><CheckCircle size={48} color="#10B981" /></motion.div>
-        ) : capturing && stream ? (
-          <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', transform: 'scaleX(-1)' }} />
         ) : capturing ? (
-          <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }} style={{ width: '100%', height: '100%', border: '3px solid transparent', borderTopColor: '#10B981', borderRadius: '50%', position: 'absolute' }} />
+          <>
+            <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', transform: 'scaleX(-1)', position: 'absolute', top: 0, left: 0 }} />
+            {!stream && (
+              <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }} style={{ width: '100%', height: '100%', border: '3px solid transparent', borderTopColor: '#10B981', borderRadius: '50%', position: 'absolute' }} />
+            )}
+          </>
         ) : (
           <Camera size={40} color="rgba(255,255,255,0.2)" />
         )}
@@ -250,8 +260,12 @@ function VoiceEnrollStep({ enrolled, onEnroll }: { enrolled: boolean; onEnroll: 
 
       {/* Audio level bar */}
       {recording && (
-        <div style={{ width: 120, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.08)', marginBottom: 12, overflow: 'hidden' }}>
-          <motion.div animate={{ width: `${audioLevel * 100}%` }} style={{ height: '100%', background: '#8B5CF6', borderRadius: 2 }} />
+        <div style={{ marginBottom: 12, textAlign: 'center' }}>
+          <div style={{ fontSize: 9, color: '#8B5CF6', fontFamily: 'JetBrains Mono', marginBottom: 4 }}>🎙️ Listening...</div>
+          <div style={{ width: 140, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden', margin: '0 auto' }}>
+            <motion.div animate={{ width: `${Math.max(10, audioLevel * 100)}%` }} style={{ height: '100%', background: 'linear-gradient(90deg, #8B5CF6, #A78BFA)', borderRadius: 3 }} />
+          </div>
+          <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.25)', fontFamily: 'JetBrains Mono', marginTop: 3 }}>Audio level: {Math.round(audioLevel * 100)}%</div>
         </div>
       )}
 

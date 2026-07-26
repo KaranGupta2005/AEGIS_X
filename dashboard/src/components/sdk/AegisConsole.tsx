@@ -167,7 +167,7 @@ export const AegisConsole: React.FC<AegisConsoleProps> = ({ state, currentPage }
             <SDKStateBadge sdkState={sdkState} />
           </div>
           <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.2)', fontFamily: 'JetBrains Mono' }}>
-            {currentPage.toUpperCase()} · W#{eventCount}
+            {(currentPage ?? 'home').toUpperCase()} · W#{eventCount}
           </span>
         </div>
       </div>
@@ -298,7 +298,7 @@ export const AegisConsole: React.FC<AegisConsoleProps> = ({ state, currentPage }
               <Section title="SDK Monitoring">
                 <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', fontFamily: 'JetBrains Mono', lineHeight: 1.7 }}>
                   <div>▸ SDK State: <span style={{ color: SDK_STATE_COLORS[sdkState] }}>{sdkState}</span></div>
-                  <div>▸ Current Screen: <span style={{ color: '#10B981' }}>{currentPage.toUpperCase()}</span></div>
+                  <div>▸ Current Screen: <span style={{ color: '#10B981' }}>{(currentPage ?? 'home').toUpperCase()}</span></div>
                   <div>▸ Activity: <span style={{ color: '#94A3B8' }}>{liveActivity?.currentActivity ?? '—'}</span></div>
                   <div>▸ Session Duration: <span style={{ color: '#3B82F6' }}>{sessionDisplay}</span></div>
                   <div>▸ Windows Collected: <span style={{ color: '#3B82F6' }}>{eventCount}</span></div>
@@ -343,7 +343,7 @@ export const AegisConsole: React.FC<AegisConsoleProps> = ({ state, currentPage }
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
                   {[
                     { label: 'SDK State', value: sdkState, color: SDK_STATE_COLORS[sdkState] },
-                    { label: 'Current Screen', value: currentPage.toUpperCase(), color: '#10B981' },
+                    { label: 'Current Screen', value: (currentPage ?? 'home').toUpperCase(), color: '#10B981' },
                     { label: 'Session Time', value: sessionDisplay, color: '#3B82F6' },
                     { label: 'Windows', value: String(eventCount), color: '#8B5CF6' },
                   ].map(item => (
