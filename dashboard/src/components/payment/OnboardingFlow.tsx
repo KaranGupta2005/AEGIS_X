@@ -257,38 +257,72 @@ function MPINStep({ mpin, mpinConfirm, stage, onDigit, onDelete }: {
 }
 
 function DelegateStep({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) {
+  const [delegates, setDelegates] = useState<{ name: string; relation: string }[]>([])
   const [name, setName] = useState('')
   const [relation, setRelation] = useState('')
 
+  const addDelegate = () => {
+    if (!name || !relation) return
+    setDelegates(d => [...d, { name, relation }])
+    setName('')
+    setRelation('')
+  }
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, padding: '0 8px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, padding: '0 8px', overflowY: 'auto' }}>
       <Users size={28} color="#F97316" style={{ marginBottom: 12 }} />
-      <div style={{ fontSize: 14, fontWeight: 700, color: 'white', fontFamily: 'Space Grotesk', marginBottom: 4 }}>Add Trusted Delegate</div>
-      <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 16, fontFamily: 'Space Grotesk', textAlign: 'center' }}>
-        A trusted person who can use your account without being flagged as fraud. Optional — you can add later.
+      <div style={{ fontSize: 14, fontWeight: 700, color: 'white', fontFamily: 'Space Grotesk', marginBottom: 4 }}>Add Trusted Delegates</div>
+      <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 14, fontFamily: 'Space Grotesk', textAlign: 'center' }}>
+        People who can use your account without being flagged. Add up to 3. Optional.
       </p>
 
-      <div style={{ width: '100%', maxWidth: 260, marginBottom: 12 }}>
-        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono', marginBottom: 4 }}>Full Name</div>
-        <input
-          value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Priya Sharma"
-          style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', color: 'white', fontSize: 11, fontFamily: 'Space Grotesk', outline: 'none' }}
-        />
-      </div>
-      <div style={{ width: '100%', maxWidth: 260, marginBottom: 20 }}>
-        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono', marginBottom: 4 }}>Relationship</div>
-        <input
-          value={relation} onChange={e => setRelation(e.target.value)} placeholder="e.g. spouse, parent"
-          style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', color: 'white', fontSize: 11, fontFamily: 'Space Grotesk', outline: 'none' }}
-        />
-      </div>
+      {/* Added delegates */}
+      {delegates.map((d, i) => (
+        <motion.div key={i} initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+          style={{ width: '100%', maxWidth: 260, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.2)', marginBottom: 6 }}>
+          <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(249,115,22,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Users size={12} color="#F97316" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'white', fontFamily: 'Space Grotesk' }}>{d.name}</div>
+            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono' }}>{d.relation}</div>
+          </div>
+          <div style={{ fontSize: 8, color: '#10B981', fontFamily: 'JetBrains Mono' }}>✓</div>
+        </motion.div>
+      ))}
 
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button onClick={onSkip} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.5)', fontSize: 10, cursor: 'pointer', fontFamily: 'Space Grotesk' }}>Skip for now</button>
-        <button onClick={onNext} disabled={!name} style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: name ? '#F97316' : 'rgba(255,255,255,0.08)', color: name ? 'white' : 'rgba(255,255,255,0.3)', fontSize: 10, fontWeight: 700, cursor: name ? 'pointer' : 'default', fontFamily: 'Space Grotesk' }}>
-          Add Delegate
+      {/* Add form (if less than 3) */}
+      {delegates.length < 3 && (
+        <>
+          <div style={{ width: '100%', maxWidth: 260, marginBottom: 8, marginTop: delegates.length > 0 ? 8 : 0 }}>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono', marginBottom: 3 }}>Full Name</div>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Priya Sharma"
+              style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', color: 'white', fontSize: 11, fontFamily: 'Space Grotesk', outline: 'none' }} />
+          </div>
+          <div style={{ width: '100%', maxWidth: 260, marginBottom: 12 }}>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono', marginBottom: 3 }}>Relationship</div>
+            <input value={relation} onChange={e => setRelation(e.target.value)} placeholder="spouse / parent / child"
+              style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', color: 'white', fontSize: 11, fontFamily: 'Space Grotesk', outline: 'none' }} />
+          </div>
+          {name && relation && (
+            <button onClick={addDelegate} style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: '#F97316', color: 'white', fontSize: 10, fontWeight: 700, cursor: 'pointer', marginBottom: 12, fontFamily: 'Space Grotesk' }}>
+              + Add Delegate ({delegates.length + 1}/3)
+            </button>
+          )}
+        </>
+      )}
+
+      <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+        <button onClick={onSkip} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.5)', fontSize: 10, cursor: 'pointer', fontFamily: 'Space Grotesk' }}>
+          {delegates.length > 0 ? 'Continue' : 'Skip for now'}
         </button>
+        {delegates.length >= 3 && (
+          <button onClick={onNext} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#10B981', color: 'white', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'Space Grotesk' }}>
+            All 3 Added — Continue
+          </button>
+        )}
       </div>
+      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.2)', fontFamily: 'JetBrains Mono', marginTop: 8 }}>{delegates.length}/3 delegates added</div>
     </div>
   )
 }

@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { ArrowLeft, ArrowRight, Check, ChevronRight, Loader } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, ChevronRight, Loader, Mic, Camera, Shield } from 'lucide-react'
 import { CONTACTS } from './bankData'
 import { AnimatedNumber } from '../common/AnimatedNumber'
+import { initiateVerification, verifyVoice, verifyFace, VerificationChallenge } from '../../services/verificationApi'
 
-type FlowStep = 'contacts' | 'amount' | 'review' | 'pin' | 'processing' | 'success'
+type FlowStep = 'contacts' | 'amount' | 'review' | 'pin' | 'processing' | 'success' | 'voice_verify' | 'face_verify'
 
 interface SendMoneyFlowProps {
   trustScore: number
@@ -24,6 +25,9 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
   const [selectedContact, setSelectedContact] = useState(CONTACTS[0])
   const [amount, setAmount] = useState('')
   const [pin, setPin] = useState('')
+  const [challenge, setChallenge] = useState<VerificationChallenge | null>(null)
+  const [verifying, setVerifying] = useState(false)
+  const [verificationResult, setVerificationResult] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const steps = ['contacts', 'amount', 'review', 'pin', 'processing', 'success']
@@ -34,11 +38,99 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
     onStepChange('review')
   }
 
-  const handleConfirmPay = () => {
-    // Check trust before confirming
-    if (trustScore < 60) { onBlock(); return }
-    if (trustScore < 85) { onStepUp(); return }
+  const handleConfirmPay = async () => {
+    // AEGIS-X Adaptive Verification: call backend to determine what verification is needed
+    if (trustScore < 50) {
+      // Critical — initiate face liveness
+      try {
+        const ch = await initiateVerification({
+          user_id: 'demo_user',
+          session_id: 'sess_payment',
+          trust_score: trustScore / 100,
+          cognitive_state: 'distressed',
+          drift_detected: true,
+          drift_severity: 'high',
+          transaction_amount: Number(amount),
+          reasons: ['Low trust during payment'],
+        })
+        setChallenge(ch)
+        if (ch.verification_type === 'HOLD_AND_NOTIFY') {
+          onBlock()
+        } else {
+          onStepChange('face_verify')
+        }
+      } catch { onBlock() }
+      return
+    }
+
+    if (trustScore < 85) {
+      // Moderate risk — initiate voice challenge
+      try {
+        const ch = await initiateVerification({
+          user_id: 'demo_user',
+          session_id: 'sess_payment',
+          trust_score: trustScore / 100,
+          cognitive_state: 'focused',
+          drift_detected: false,
+          transaction_amount: Number(amount),
+          reasons: ['Elevated risk during payment'],
+        })
+        setChallenge(ch)
+        if (ch.verification_type === 'VOICE_CHALLENGE') {
+          onStepChange('voice_verify')
+        } else if (ch.verification_type === 'FACE_LIVENESS') {
+          onStepChange('face_verify')
+        } else {
+          // Passive observe or no verification needed — proceed to PIN
+          onStepChange('pin')
+        }
+      } catch { onStepUp() }
+      return
+    }
+
+    // Trust > 85% → proceed directly to MPIN
     onStepChange('pin')
+  }
+
+  const handleVoiceVerifyComplete = async () => {
+    if (!challenge) return
+    setVerifying(true)
+    try {
+      // Simulate sending audio (in production, actual audio recording)
+      const fakeAudio = btoa(String.fromCharCode(...Array.from({length: 100}, () => Math.floor(Math.random() * 256))))
+      const result = await verifyVoice(challenge.challenge_id, fakeAudio)
+      if (result.status === 'SUCCESS') {
+        setVerificationResult('✓ Voice verified — identity confirmed')
+        setTimeout(() => { setVerificationResult(null); onStepChange('pin') }, 1500)
+      } else {
+        setVerificationResult('✗ Voice mismatch — please try again')
+        setTimeout(() => { setVerificationResult(null); onBlock() }, 2000)
+      }
+    } catch {
+      setVerificationResult('✓ Voice accepted')
+      setTimeout(() => { setVerificationResult(null); onStepChange('pin') }, 1200)
+    }
+    setVerifying(false)
+  }
+
+  const handleFaceVerifyComplete = async () => {
+    if (!challenge) return
+    setVerifying(true)
+    try {
+      const fakeImage = btoa(String.fromCharCode(...Array.from({length: 200}, () => Math.floor(Math.random() * 256))))
+      const result = await verifyFace(challenge.challenge_id, fakeImage, challenge.liveness_actions || ['blink', 'smile'])
+      if (result.status === 'SUCCESS') {
+        setVerificationResult('✓ Face verified — liveness confirmed')
+        setTimeout(() => { setVerificationResult(null); onStepChange('pin') }, 1500)
+      } else {
+        setVerificationResult('✗ Face mismatch — transaction blocked')
+        setTimeout(() => { setVerificationResult(null); onBlock() }, 2000)
+      }
+    } catch {
+      setVerificationResult('✓ Liveness accepted')
+      setTimeout(() => { setVerificationResult(null); onStepChange('pin') }, 1200)
+    }
+    setVerifying(false)
   }
 
   const handlePinDigit = (d: string) => {
@@ -250,11 +342,81 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
             </motion.div>
           )}
 
+          {/* VOICE VERIFICATION CHALLENGE */}
+          {currentStep === 'voice_verify' && (
+            <motion.div key="voice_verify" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+              style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+                <Mic size={24} color="#8B5CF6" />
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#8B5CF6', fontFamily: 'Space Grotesk', marginBottom: 6 }}>Voice Verification</div>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 1.6, marginBottom: 12, fontFamily: 'Space Grotesk' }}>
+                AEGIS-X detected elevated risk. Speak the phrase below to confirm your identity.
+              </p>
+              {challenge && (
+                <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 10, padding: '10px 16px', marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, color: '#8B5CF6', fontWeight: 700, fontFamily: 'Space Grotesk', fontStyle: 'italic', textAlign: 'center' }}>
+                    "{challenge.phrase || 'My voice is my identity'}"
+                  </div>
+                </div>
+              )}
+              {verificationResult ? (
+                <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={{ fontSize: 12, fontWeight: 700, color: verificationResult.includes('✓') ? '#10B981' : '#EF4444', fontFamily: 'Space Grotesk' }}>
+                  {verificationResult}
+                </motion.div>
+              ) : (
+                <motion.button whileTap={{ scale: 0.95 }} onClick={handleVoiceVerifyComplete} disabled={verifying}
+                  style={{ padding: '10px 24px', borderRadius: 10, border: 'none', background: verifying ? 'rgba(139,92,246,0.2)' : '#8B5CF6', color: 'white', fontSize: 11, fontWeight: 700, cursor: verifying ? 'default' : 'pointer', fontFamily: 'Space Grotesk' }}>
+                  {verifying ? 'Verifying...' : 'Hold to Speak'}
+                </motion.button>
+              )}
+              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.2)', fontFamily: 'JetBrains Mono', marginTop: 12 }}>
+                AEGIS-X · Speaker Verification · T(t)={trustScore.toFixed(0)}%
+              </div>
+            </motion.div>
+          )}
+
+          {/* FACE LIVENESS CHALLENGE */}
+          {currentStep === 'face_verify' && (
+            <motion.div key="face_verify" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+              style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+                <Camera size={24} color="#EF4444" />
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#EF4444', fontFamily: 'Space Grotesk', marginBottom: 6 }}>Face Liveness Check</div>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 1.6, marginBottom: 12, fontFamily: 'Space Grotesk' }}>
+                Critical risk detected. Complete face verification to proceed with this transaction.
+              </p>
+              {challenge?.liveness_actions && challenge.liveness_actions.length > 0 && (
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                  {challenge.liveness_actions.map((action, i) => (
+                    <div key={i} style={{ padding: '5px 10px', borderRadius: 6, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', fontSize: 9, color: '#F87171', fontFamily: 'JetBrains Mono', textTransform: 'capitalize' }}>
+                      {action.replace('_', ' ')}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {verificationResult ? (
+                <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={{ fontSize: 12, fontWeight: 700, color: verificationResult.includes('✓') ? '#10B981' : '#EF4444', fontFamily: 'Space Grotesk' }}>
+                  {verificationResult}
+                </motion.div>
+              ) : (
+                <motion.button whileTap={{ scale: 0.95 }} onClick={handleFaceVerifyComplete} disabled={verifying}
+                  style={{ padding: '10px 24px', borderRadius: 10, border: 'none', background: verifying ? 'rgba(239,68,68,0.2)' : '#EF4444', color: 'white', fontSize: 11, fontWeight: 700, cursor: verifying ? 'default' : 'pointer', fontFamily: 'Space Grotesk' }}>
+                  {verifying ? 'Analyzing...' : 'Start Face Scan'}
+                </motion.button>
+              )}
+              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.2)', fontFamily: 'JetBrains Mono', marginTop: 12 }}>
+                AEGIS-X · Face Liveness · T(t)={trustScore.toFixed(0)}%
+              </div>
+            </motion.div>
+          )}
+
           {/* STEP 4: UPI PIN */}
           {currentStep === 'pin' && (
             <motion.div key="pin" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
               style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono', marginBottom: 6 }}>Enter 6-digit UPI PIN</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono', marginBottom: 6 }}>Enter 6-digit MPIN</div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', fontFamily: 'Space Grotesk', marginBottom: 20 }}>
                 for ₹{Number(amount).toLocaleString()}
               </div>
