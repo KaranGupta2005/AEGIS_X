@@ -39,9 +39,14 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
   }
 
   const handleConfirmPay = async () => {
-    // AEGIS-X Adaptive Verification: call backend to determine what verification is needed
+    // AEGIS-X Adaptive Verification Flow:
+    // Trust > 85%  → Direct to MPIN (frictionless)
+    // Trust 50-85% → Voice Challenge first, then MPIN
+    // Trust < 50%  → Face Liveness first, then MPIN
+    // BLOCK only happens if verification FAILS — never preemptively
+
     if (trustScore < 50) {
-      // Critical — initiate face liveness
+      // Face Liveness required
       try {
         const ch = await initiateVerification({
           user_id: 'demo_user',
@@ -55,16 +60,19 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
         })
         setChallenge(ch)
         if (ch.verification_type === 'HOLD_AND_NOTIFY') {
-          onBlock()
+          onBlock() // Only HOLD blocks — this is for coercion/robotic
         } else {
           onStepChange('face_verify')
         }
-      } catch { onBlock() }
+      } catch {
+        // Backend unavailable — proceed to MPIN (fail-open for demo)
+        onStepChange('pin')
+      }
       return
     }
 
     if (trustScore < 85) {
-      // Moderate risk — initiate voice challenge
+      // Voice Challenge required
       try {
         const ch = await initiateVerification({
           user_id: 'demo_user',
@@ -81,32 +89,35 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
         } else if (ch.verification_type === 'FACE_LIVENESS') {
           onStepChange('face_verify')
         } else {
-          // Passive observe or no verification needed — proceed to PIN
+          // PASSIVE_OBSERVE or NONE → proceed to MPIN
           onStepChange('pin')
         }
-      } catch { onStepUp() }
+      } catch {
+        // Backend unavailable — proceed to MPIN
+        onStepChange('pin')
+      }
       return
     }
 
-    // Trust > 85% → proceed directly to MPIN
+    // Trust > 85% → MPIN directly (no extra verification)
     onStepChange('pin')
   }
 
   const handleVoiceVerifyComplete = async () => {
-    if (!challenge) return
+    if (!challenge) { onStepChange('pin'); return }
     setVerifying(true)
     try {
-      // Simulate sending audio (in production, actual audio recording)
       const fakeAudio = btoa(String.fromCharCode(...Array.from({length: 100}, () => Math.floor(Math.random() * 256))))
       const result = await verifyVoice(challenge.challenge_id, fakeAudio)
-      if (result.status === 'SUCCESS') {
+      if (result.status === 'SUCCESS' || result.verified) {
         setVerificationResult('✓ Voice verified — identity confirmed')
         setTimeout(() => { setVerificationResult(null); onStepChange('pin') }, 1500)
       } else {
-        setVerificationResult('✗ Voice mismatch — please try again')
+        setVerificationResult('✗ Voice mismatch — transaction blocked')
         setTimeout(() => { setVerificationResult(null); onBlock() }, 2000)
       }
     } catch {
+      // Backend unavailable — accept for demo purposes
       setVerificationResult('✓ Voice accepted')
       setTimeout(() => { setVerificationResult(null); onStepChange('pin') }, 1200)
     }
@@ -114,12 +125,12 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
   }
 
   const handleFaceVerifyComplete = async () => {
-    if (!challenge) return
+    if (!challenge) { onStepChange('pin'); return }
     setVerifying(true)
     try {
       const fakeImage = btoa(String.fromCharCode(...Array.from({length: 200}, () => Math.floor(Math.random() * 256))))
       const result = await verifyFace(challenge.challenge_id, fakeImage, challenge.liveness_actions || ['blink', 'smile'])
-      if (result.status === 'SUCCESS') {
+      if (result.status === 'SUCCESS' || result.verified) {
         setVerificationResult('✓ Face verified — liveness confirmed')
         setTimeout(() => { setVerificationResult(null); onStepChange('pin') }, 1500)
       } else {
@@ -127,6 +138,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
         setTimeout(() => { setVerificationResult(null); onBlock() }, 2000)
       }
     } catch {
+      // Backend unavailable — accept for demo
       setVerificationResult('✓ Liveness accepted')
       setTimeout(() => { setVerificationResult(null); onStepChange('pin') }, 1200)
     }

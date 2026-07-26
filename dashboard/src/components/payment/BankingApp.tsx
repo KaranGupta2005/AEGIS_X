@@ -152,9 +152,9 @@ export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, co
       </div>
       )}
 
-      {/* BLOCK Overlay — only shows when user is in a transaction flow */}
+      {/* BLOCK Overlay — ONLY when verification explicitly fails during payment */}
       <AnimatePresence>
-        {(blocked || (decision === 'BLOCK' && screen === 'send')) && (
+        {blocked && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(6px)', borderRadius: 16 }}>
             <motion.div initial={{ scale: 0.88, y: 20 }} animate={{ scale: 1, y: 0 }}
@@ -181,28 +181,8 @@ export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, co
         )}
       </AnimatePresence>
 
-      {/* STEP-UP Overlay */}
-      <AnimatePresence>
-        {stepUp && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(5px)', borderRadius: 16 }}>
-            <motion.div initial={{ scale: 0.9, y: 16 }} animate={{ scale: 1, y: 0 }}
-              style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 20, padding: '24px', textAlign: 'center', maxWidth: 270, margin: '0 16px' }}>
-              <div style={{ width: 50, height: 50, borderRadius: '50%', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                <Lock size={20} color="#F59E0B" />
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#F59E0B', fontFamily: 'Space Grotesk', marginBottom: 6 }}>Verification Required</div>
-              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, margin: '0 0 14px', fontFamily: 'Space Grotesk' }}>
-                Elevated risk detected. Complete additional verification to proceed.
-              </p>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setStepUp(false)} style={{ flex: 1, padding: '9px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.4)', fontSize: 11, cursor: 'pointer', fontFamily: 'Space Grotesk' }}>Cancel</button>
-                <button onClick={() => { setStepUp(false); navigateToFlowScreen('pin') }} style={{ flex: 1, padding: '9px', borderRadius: 10, border: 'none', background: '#F59E0B', color: '#000', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'Space Grotesk' }}>Enter MPIN</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Note: Step-Up verification (voice/face challenges) is now handled
+          inline within SendMoneyFlow — no overlay needed */}
     </div>
   )
 }
