@@ -11,7 +11,6 @@ const CognitiveAnalysis = React.lazy(() => import('./pages/CognitiveAnalysis'))
 const IncidentExplorer = React.lazy(() => import('./pages/IncidentExplorer'))
 const SessionReplay = React.lazy(() => import('./pages/SessionReplay'))
 const LiveDemo = React.lazy(() => import('./pages/LiveDemo'))
-const VerificationCenter = React.lazy(() => import('./pages/VerificationCenter'))
 
 const Lazy: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Suspense fallback={<div style={{ padding: 40, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>Loading...</div>}>
@@ -34,7 +33,6 @@ export const router = createBrowserRouter([
       { path: 'cognitive', element: <Lazy><CognitiveAnalysis /></Lazy> },
       { path: 'incident', element: <Lazy><IncidentExplorer /></Lazy> },
       { path: 'replay', element: <Lazy><SessionReplay /></Lazy> },
-      { path: 'verification', element: <Lazy><VerificationCenter /></Lazy> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

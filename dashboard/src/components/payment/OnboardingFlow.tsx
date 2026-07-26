@@ -135,20 +135,44 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
 
 function FaceEnrollStep({ enrolled, onEnroll }: { enrolled: boolean; onEnroll: () => void }) {
   const [capturing, setCapturing] = useState(false)
+  const [stream, setStream] = useState<MediaStream | null>(null)
+  const videoRef = React.useRef<HTMLVideoElement>(null)
+
+  const startCapture = async () => {
+    setCapturing(true)
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 320 } })
+      setStream(mediaStream)
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream
+        videoRef.current.play()
+      }
+      // Capture for 2.5 seconds then complete
+      setTimeout(() => {
+        mediaStream.getTracks().forEach(t => t.stop())
+        setStream(null)
+        setCapturing(false)
+        onEnroll()
+      }, 2500)
+    } catch {
+      // Camera unavailable — simulate enrollment
+      setTimeout(() => { setCapturing(false); onEnroll() }, 2000)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, textAlign: 'center' }}>
       <div style={{ fontSize: 14, fontWeight: 700, color: 'white', fontFamily: 'Space Grotesk', marginBottom: 6 }}>Face Enrollment</div>
       <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 16, fontFamily: 'Space Grotesk' }}>Look directly at the camera. We'll capture your face template.</p>
 
-      {/* Camera preview placeholder */}
       <motion.div
         animate={capturing ? { borderColor: '#10B981' } : { borderColor: 'rgba(255,255,255,0.1)' }}
         style={{ width: 160, height: 160, borderRadius: '50%', border: '3px solid', background: 'rgba(16,185,129,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, position: 'relative', overflow: 'hidden' }}
       >
         {enrolled ? (
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
-            <CheckCircle size={48} color="#10B981" />
-          </motion.div>
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}><CheckCircle size={48} color="#10B981" /></motion.div>
+        ) : capturing && stream ? (
+          <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', transform: 'scaleX(-1)' }} />
         ) : capturing ? (
           <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }} style={{ width: '100%', height: '100%', border: '3px solid transparent', borderTopColor: '#10B981', borderRadius: '50%', position: 'absolute' }} />
         ) : (
@@ -159,8 +183,7 @@ function FaceEnrollStep({ enrolled, onEnroll }: { enrolled: boolean; onEnroll: (
       {enrolled ? (
         <div style={{ fontSize: 11, color: '#10B981', fontWeight: 700, fontFamily: 'Space Grotesk' }}>✓ Face enrolled successfully</div>
       ) : (
-        <button onClick={() => { setCapturing(true); setTimeout(() => { setCapturing(false); onEnroll() }, 2000) }}
-          disabled={capturing}
+        <button onClick={startCapture} disabled={capturing}
           style={{ padding: '9px 24px', borderRadius: 10, border: 'none', background: capturing ? 'rgba(16,185,129,0.2)' : '#10B981', color: 'white', fontSize: 11, fontWeight: 700, cursor: capturing ? 'default' : 'pointer', fontFamily: 'Space Grotesk' }}>
           {capturing ? 'Capturing...' : 'Start Face Capture'}
         </button>
@@ -171,32 +194,71 @@ function FaceEnrollStep({ enrolled, onEnroll }: { enrolled: boolean; onEnroll: (
 
 function VoiceEnrollStep({ enrolled, onEnroll }: { enrolled: boolean; onEnroll: () => void }) {
   const [recording, setRecording] = useState(false)
+  const [audioLevel, setAudioLevel] = useState(0)
+
+  const startRecording = async () => {
+    setRecording(true)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // Visualize audio level
+      const audioCtx = new AudioContext()
+      const source = audioCtx.createMediaStreamSource(stream)
+      const analyser = audioCtx.createAnalyser()
+      analyser.fftSize = 256
+      source.connect(analyser)
+      const dataArray = new Uint8Array(analyser.frequencyBinCount)
+
+      const interval = setInterval(() => {
+        analyser.getByteFrequencyData(dataArray)
+        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length
+        setAudioLevel(avg / 255)
+      }, 100)
+
+      // Record for 3 seconds
+      setTimeout(() => {
+        clearInterval(interval)
+        stream.getTracks().forEach(t => t.stop())
+        audioCtx.close()
+        setRecording(false)
+        setAudioLevel(0)
+        onEnroll()
+      }, 3000)
+    } catch {
+      // Mic unavailable — simulate
+      setTimeout(() => { setRecording(false); onEnroll() }, 2500)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, textAlign: 'center' }}>
       <div style={{ fontSize: 14, fontWeight: 700, color: 'white', fontFamily: 'Space Grotesk', marginBottom: 6 }}>Voice Enrollment</div>
       <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 16, fontFamily: 'Space Grotesk' }}>Say the phrase below clearly into your microphone.</p>
 
-      {/* Phrase to speak */}
       <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 10, padding: '10px 16px', marginBottom: 16 }}>
         <div style={{ fontSize: 12, color: '#8B5CF6', fontWeight: 700, fontFamily: 'Space Grotesk', fontStyle: 'italic' }}>
           "My voice is my identity"
         </div>
       </div>
 
-      {/* Mic indicator */}
       <motion.div
-        animate={recording ? { scale: [1, 1.15, 1], boxShadow: ['0 0 0 0 rgba(139,92,246,0)', '0 0 0 12px rgba(139,92,246,0.2)', '0 0 0 0 rgba(139,92,246,0)'] } : {}}
-        transition={{ duration: 1.5, repeat: Infinity }}
+        animate={recording ? { scale: [1, 1 + audioLevel * 0.3, 1] } : {}}
+        transition={{ duration: 0.3 }}
         style={{ width: 72, height: 72, borderRadius: '50%', background: enrolled ? 'rgba(16,185,129,0.1)' : 'rgba(139,92,246,0.08)', border: `2px solid ${enrolled ? '#10B981' : recording ? '#8B5CF6' : 'rgba(255,255,255,0.1)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}
       >
         {enrolled ? <CheckCircle size={32} color="#10B981" /> : <Mic size={28} color={recording ? '#8B5CF6' : 'rgba(255,255,255,0.3)'} />}
       </motion.div>
 
+      {/* Audio level bar */}
+      {recording && (
+        <div style={{ width: 120, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.08)', marginBottom: 12, overflow: 'hidden' }}>
+          <motion.div animate={{ width: `${audioLevel * 100}%` }} style={{ height: '100%', background: '#8B5CF6', borderRadius: 2 }} />
+        </div>
+      )}
+
       {enrolled ? (
         <div style={{ fontSize: 11, color: '#10B981', fontWeight: 700, fontFamily: 'Space Grotesk' }}>✓ Voice enrolled successfully</div>
       ) : (
-        <button onClick={() => { setRecording(true); setTimeout(() => { setRecording(false); onEnroll() }, 2500) }}
-          disabled={recording}
+        <button onClick={startRecording} disabled={recording}
           style={{ padding: '9px 24px', borderRadius: 10, border: 'none', background: recording ? 'rgba(139,92,246,0.2)' : '#8B5CF6', color: 'white', fontSize: 11, fontWeight: 700, cursor: recording ? 'default' : 'pointer', fontFamily: 'Space Grotesk' }}>
           {recording ? 'Recording...' : 'Start Recording'}
         </button>

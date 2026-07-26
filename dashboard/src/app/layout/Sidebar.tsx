@@ -17,7 +17,6 @@ const navItems = [
   { id: 'cognitive', label: 'Cognitive Analysis', icon: Brain,        color: 'var(--accent-purple)', path: '/app/cognitive' },
   { id: 'incident',  label: 'Incident Explorer', icon: FileWarning,  color: 'var(--accent-warn)',   path: '/app/incident'  },
   { id: 'replay',    label: 'Session Replay',    icon: RotateCcw,    color: 'var(--accent-danger)', path: '/app/replay'    },
-  { id: 'verification', label: 'Verification',   icon: Shield,       color: 'var(--accent-purple)', path: '/app/verification' },
 ]
 
 interface SidebarProps {
