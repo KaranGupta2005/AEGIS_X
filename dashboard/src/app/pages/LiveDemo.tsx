@@ -5,7 +5,6 @@ import { useStore } from '../../services/store'
 import { SimulatorScenario } from '../../services/api'
 import { BankingApp } from '../../components/payment/BankingApp'
 import { AegisConsole } from '../../components/sdk/AegisConsole'
-import { AegisFlowGraph } from '../../components/sdk/AegisFlowGraph'
 
 const SCENARIOS = [
   { key: 'normal' as SimulatorScenario, label: 'Normal User', icon: User, color: '#10B981', desc: 'Genuine session' },
@@ -90,9 +89,9 @@ const LiveDemo: React.FC = () => {
         </div>
       </div>
 
-      {/* Main split — Banking App + Console + Flow Graph */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 340px', gridTemplateRows: '1.6fr 1fr', gap: 10, minHeight: 0 }}>
-        {/* TOP-LEFT: Banking App */}
+      {/* Main split — Banking App + Console */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12, minHeight: 0 }}>
+        {/* LEFT: Banking App */}
         <BankingApp
           trustScore={trustScore}
           decision={decision}
@@ -100,22 +99,11 @@ const LiveDemo: React.FC = () => {
           onScreenChange={handleScreenChange}
         />
 
-        {/* TOP-RIGHT: AEGIS-X Console */}
+        {/* RIGHT: AEGIS-X Console */}
         <AegisConsole
           state={state}
           currentPage={liveActivity.currentPage}
         />
-
-        {/* BOTTOM: Flow Graph (spans full width) */}
-        <div style={{ gridColumn: '1 / -1' }}>
-          <AegisFlowGraph
-            sdkState={sdkState}
-            currentScreen={liveActivity.currentPage}
-            eventCount={eventCount}
-            trustScore={trustScore}
-            decision={decision}
-          />
-        </div>
       </div>
     </div>
   )
