@@ -68,3 +68,26 @@ TX_AMOUNT_LOW = 5000
 TX_AMOUNT_MEDIUM = 25000
 TX_AMOUNT_HIGH = 100000
 TX_AMOUNT_EXTREME = 500000
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ADAPTIVE VERIFICATION ENGINE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Gemini API (multimodal reasoning layer — optional)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+
+# Groq API (fast inference for voice verification — optional)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+
+# Verification thresholds
+VERIFY_TRUST_VOICE = 0.70       # Trust 50–70% → Voice Challenge
+VERIFY_TRUST_FACE = 0.50        # Trust < 50% → Face Liveness
+VERIFY_TRUST_CRITICAL = 0.30    # Critical → Hold + Notify
+
+# Voice verification
+VOICE_SIMILARITY_THRESHOLD = 0.75   # Cosine similarity for speaker match
+VOICE_REPLAY_THRESHOLD = 0.85       # Above this → suspected replay
+
+# Face verification
+FACE_SIMILARITY_THRESHOLD = 0.70    # FaceNet embedding cosine threshold
+FACE_LIVENESS_CONFIDENCE = 0.80     # Minimum liveness confidence

@@ -294,3 +294,91 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ADAPTIVE VERIFICATION ENGINE TABLES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class VoiceProfileModel(Base):
+    """Enrolled speaker voiceprint (ECAPA-TDNN 192-dim embedding)."""
+    __tablename__ = "voice_profiles"
+
+    id = Column(String(64), primary_key=True, default=generate_uuid)
+    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    embedding_blob = Column(Text, nullable=False)
+    embedding_dimension = Column(Integer, default=192)
+    sample_count = Column(Integer, default=1)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    is_active = Column(Boolean, default=True)
+
+    __table_args__ = (
+        Index("ix_voice_profiles_user_active", "user_id", "is_active"),
+    )
+
+
+class FaceProfileModel(Base):
+    """Enrolled face template (FaceNet/InsightFace 128/512-dim embedding)."""
+    __tablename__ = "face_profiles"
+
+    id = Column(String(64), primary_key=True, default=generate_uuid)
+    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    embedding_blob = Column(Text, nullable=False)
+    embedding_dimension = Column(Integer, default=128)
+    sample_count = Column(Integer, default=1)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    is_active = Column(Boolean, default=True)
+
+    __table_args__ = (
+        Index("ix_face_profiles_user_active", "user_id", "is_active"),
+    )
+
+
+class TrustedDelegateModel(Base):
+    """Trusted delegate with independent biometric profiles."""
+    __tablename__ = "trusted_delegates"
+
+    id = Column(String(64), primary_key=True, default=generate_uuid)
+    primary_user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(128), nullable=False)
+    relationship = Column(String(64), nullable=False)
+    voice_embedding_blob = Column(Text, nullable=True)
+    face_embedding_blob = Column(Text, nullable=True)
+    behavioral_baseline_blob = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    verified_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_delegates_primary_user", "primary_user_id", "is_active"),
+    )
+
+
+class VerificationSessionModel(Base):
+    """Active or completed verification challenge."""
+    __tablename__ = "verification_sessions"
+
+    id = Column(String(64), primary_key=True, default=generate_uuid)
+    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    session_id = Column(String(64), nullable=False)
+    verification_type = Column(String(32), nullable=False)
+    risk_source = Column(String(32), nullable=False)
+    status = Column(String(16), nullable=False)
+    trust_before = Column(Float, nullable=False)
+    trust_after = Column(Float, nullable=True)
+    confidence = Column(Float, default=0.0)
+    latency_ms = Column(Float, default=0.0)
+    phrase = Column(String(256), nullable=True)
+    liveness_actions = Column(JSON, nullable=True)
+    matched_delegate_id = Column(String(64), nullable=True)
+    reason = Column(Text, nullable=True)
+    explanation = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_verification_user_status", "user_id", "status"),
+        Index("ix_verification_created_at", "created_at"),
+    )

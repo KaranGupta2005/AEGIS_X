@@ -118,12 +118,14 @@ from backend.api.event_routes import router as event_router
 from backend.api.monitor_routes import router as monitor_router
 from backend.api.audit_routes import router as audit_router
 from backend.api.auth_routes import router as auth_router
+from backend.api.verification_routes import router as verification_router
 
 app.include_router(auth_router)
 app.include_router(session_router)
 app.include_router(event_router)
 app.include_router(monitor_router)
 app.include_router(audit_router)
+app.include_router(verification_router)
 
 
 @app.get("/", tags=["Health"])
