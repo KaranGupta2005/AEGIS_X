@@ -33,6 +33,9 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field, asdict
 
+from backend.services.providers.registry import ProviderRegistry
+from backend.services.providers.interfaces import VerificationResult as ProviderResult
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENUMS & TYPES
@@ -234,6 +237,10 @@ class AdaptiveVerificationEngine:
         self._delegates: Dict[str, List[TrustedDelegate]] = {}  # user_id → delegates
         self._active_challenges: Dict[str, VerificationChallenge] = {}  # challenge_id → challenge
         self._verification_history: Dict[str, List[VerificationChallenge]] = {}  # user_id → history
+
+        # Provider registry — concrete implementations injected here
+        self._registry = ProviderRegistry()
+        self._init_mock_providers()
 
     # ═══════════════════════════════════════════════════════════════════════
     # CORE: ANALYZE & SELECT VERIFICATION METHOD
@@ -864,3 +871,183 @@ class AdaptiveVerificationEngine:
             "active_challenges": len(self._active_challenges),
             "total_verifications": sum(len(h) for h in self._verification_history.values()),
         }
+
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # PROVIDER INITIALIZATION (mock providers for demo/development)
+    # ═══════════════════════════════════════════════════════════════════════
+
+    def _init_mock_providers(self):
+        """Register mock providers for development/demo mode."""
+        from backend.services.providers.mock_providers import (
+            MockVoiceVerificationProvider,
+            MockFaceVerificationProvider,
+            MockLivenessProvider,
+            MockVoiceEnrollmentProvider,
+            MockFaceEnrollmentProvider,
+            MockDelegateVerificationProvider,
+        )
+        self._registry.register_voice_verifier(MockVoiceVerificationProvider())
+        self._registry.register_face_verifier(MockFaceVerificationProvider())
+        self._registry.register_liveness(MockLivenessProvider())
+        self._registry.register_voice_enrollment(MockVoiceEnrollmentProvider())
+        self._registry.register_face_enrollment(MockFaceEnrollmentProvider())
+        self._registry.register_delegate_verifier(MockDelegateVerificationProvider())
+
+    def get_providers_status(self) -> Dict:
+        """Return status of all registered providers."""
+        return self._registry.get_status()
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # PROVIDER-DELEGATED VERIFICATION (uses interfaces, not direct impl)
+    # ═══════════════════════════════════════════════════════════════════════
+
+    def verify_voice_via_provider(
+        self,
+        challenge_id: str,
+        audio_data: bytes,
+    ) -> Dict:
+        """
+        Verify voice via the registered IVoiceVerificationProvider.
+        This is the provider-based path that supports any AI engine.
+        """
+        challenge = self._active_challenges.get(challenge_id)
+        if not challenge:
+            return {"status": "error", "message": "Challenge not found or expired"}
+
+        provider = self._registry.get_voice_verifier()
+        if not provider:
+            return {"status": "error", "message": "No voice verification provider registered"}
+
+        # Check for replay attack
+        is_replay = provider.detect_replay(audio_data)
+        if is_replay:
+            challenge.status = VerificationStatus.FAILED
+            challenge.confidence = 0.0
+            challenge.trust_after = challenge.trust_before
+            challenge.explanation += " REPLAY ATTACK DETECTED via provider."
+            challenge.completed_at = datetime.now(timezone.utc).isoformat()
+            self._active_challenges.pop(challenge_id, None)
+            return challenge.to_dict()
+
+        # Get enrolled embedding
+        voice_profile = self._voice_profiles.get(challenge.user_id)
+        enrolled_embedding = voice_profile.embedding if voice_profile else None
+
+        # Verify through provider interface
+        result: ProviderResult = provider.verify_speaker(
+            audio_data=audio_data,
+            enrolled_embedding=enrolled_embedding,
+            expected_phrase=challenge.phrase,
+        )
+
+        if result.verified:
+            challenge.status = VerificationStatus.SUCCESS
+            challenge.confidence = result.confidence
+            recovery = self.TRUST_RECOVERY_VOICE * result.confidence
+            challenge.trust_after = min(1.0, challenge.trust_before + recovery)
+            challenge.explanation += f" {result.reason}. Trust recovered."
+        else:
+            challenge.status = VerificationStatus.FAILED
+            challenge.confidence = result.confidence
+            challenge.trust_after = max(0.0, challenge.trust_before - 0.10)
+            challenge.explanation += f" {result.reason}."
+
+        challenge.latency_ms = result.processing_time_ms
+        challenge.completed_at = datetime.now(timezone.utc).isoformat()
+        self._active_challenges.pop(challenge_id, None)
+        return challenge.to_dict()
+
+    def verify_face_via_provider(
+        self,
+        challenge_id: str,
+        image_data: bytes,
+        completed_actions: List[str],
+    ) -> Dict:
+        """
+        Verify face + liveness via registered providers.
+        Combines ILivenessProvider + IFaceVerificationProvider.
+        """
+        challenge = self._active_challenges.get(challenge_id)
+        if not challenge:
+            return {"status": "error", "message": "Challenge not found or expired"}
+
+        liveness_provider = self._registry.get_liveness()
+        face_provider = self._registry.get_face_verifier()
+
+        if not liveness_provider or not face_provider:
+            return {"status": "error", "message": "Liveness or face provider not registered"}
+
+        # Step 1: Liveness check
+        from backend.services.providers.interfaces import LivenessResult
+        liveness: LivenessResult = liveness_provider.check_liveness(
+            image_data=image_data,
+            required_actions=challenge.liveness_actions,
+            completed_actions=completed_actions,
+        )
+
+        if not liveness.is_live:
+            challenge.status = VerificationStatus.FAILED
+            challenge.confidence = liveness.confidence
+            challenge.trust_after = max(0.0, challenge.trust_before - 0.15)
+            challenge.explanation += f" {liveness.reason}."
+            challenge.latency_ms = liveness.processing_time_ms
+            challenge.completed_at = datetime.now(timezone.utc).isoformat()
+            self._active_challenges.pop(challenge_id, None)
+            return challenge.to_dict()
+
+        # Step 2: Face identity verification
+        face_profile = self._face_profiles.get(challenge.user_id)
+        enrolled_embedding = face_profile.embedding if face_profile else None
+
+        face_result: ProviderResult = face_provider.verify_face(
+            image_data=image_data,
+            enrolled_embedding=enrolled_embedding,
+        )
+
+        if face_result.verified:
+            challenge.status = VerificationStatus.SUCCESS
+            challenge.confidence = min(1.0, liveness.confidence * face_result.confidence)
+            recovery = self.TRUST_RECOVERY_FACE * challenge.confidence
+            challenge.trust_after = min(1.0, challenge.trust_before + recovery)
+            challenge.explanation += (
+                f" Liveness: {liveness.reason}. Face: {face_result.reason}. Trust recovered."
+            )
+        else:
+            challenge.status = VerificationStatus.FAILED
+            challenge.confidence = face_result.confidence
+            challenge.trust_after = max(0.0, challenge.trust_before - 0.20)
+            challenge.explanation += f" Liveness passed. Face: {face_result.reason}."
+
+        challenge.latency_ms = liveness.processing_time_ms + face_result.processing_time_ms
+        challenge.completed_at = datetime.now(timezone.utc).isoformat()
+        self._active_challenges.pop(challenge_id, None)
+        return challenge.to_dict()
+
+    def enroll_voice_via_provider(self, user_id: str, audio_samples: List[bytes]) -> Dict:
+        """Enroll voice using the registered IVoiceEnrollmentProvider."""
+        provider = self._registry.get_voice_enrollment()
+        if not provider:
+            return {"status": "error", "message": "No voice enrollment provider registered"}
+
+        result = provider.enroll_voice(audio_samples)
+        if result.enrolled:
+            embedding = provider.get_embedding(audio_samples[0])
+            if embedding is not None:
+                self.enroll_voice(user_id, embedding)
+
+        return result.to_dict()
+
+    def enroll_face_via_provider(self, user_id: str, image_samples: List[bytes]) -> Dict:
+        """Enroll face using the registered IFaceEnrollmentProvider."""
+        provider = self._registry.get_face_enrollment()
+        if not provider:
+            return {"status": "error", "message": "No face enrollment provider registered"}
+
+        result = provider.enroll_face(image_samples)
+        if result.enrolled:
+            embedding = provider.get_embedding(image_samples[0])
+            if embedding is not None:
+                self.enroll_face(user_id, embedding)
+
+        return result.to_dict()

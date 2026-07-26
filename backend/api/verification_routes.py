@@ -219,3 +219,82 @@ def get_engine_status():
     """Verification engine health and stats."""
     engine = get_engine()
     return engine.get_engine_status()
+
+
+# ─── PROVIDER-BASED ENDPOINTS ─────────────────────────────────────────────────
+
+class ProviderVoiceVerifyRequest(BaseModel):
+    challenge_id: str = Field(..., min_length=1)
+    audio_base64: str = Field(..., min_length=1)
+
+
+class ProviderFaceVerifyRequest(BaseModel):
+    challenge_id: str = Field(..., min_length=1)
+    image_base64: str = Field(..., min_length=1)
+    completed_actions: List[str] = Field(default_factory=list)
+
+
+class ProviderVoiceEnrollRequest(BaseModel):
+    user_id: str = Field(..., min_length=1)
+    audio_samples_base64: List[str] = Field(..., min_length=1)
+
+
+class ProviderFaceEnrollRequest(BaseModel):
+    user_id: str = Field(..., min_length=1)
+    image_samples_base64: List[str] = Field(..., min_length=1)
+
+
+@router.post("/provider/voice")
+def provider_verify_voice(request: ProviderVoiceVerifyRequest):
+    """Verify voice through the registered provider (supports any AI engine)."""
+    import base64
+    engine = get_engine()
+    audio_data = base64.b64decode(request.audio_base64)
+    result = engine.verify_voice_via_provider(
+        challenge_id=request.challenge_id,
+        audio_data=audio_data,
+    )
+    if result.get("status") == "error":
+        raise HTTPException(status_code=400, detail=result["message"])
+    return result
+
+
+@router.post("/provider/face")
+def provider_verify_face(request: ProviderFaceVerifyRequest):
+    """Verify face + liveness through registered providers."""
+    import base64
+    engine = get_engine()
+    image_data = base64.b64decode(request.image_base64)
+    result = engine.verify_face_via_provider(
+        challenge_id=request.challenge_id,
+        image_data=image_data,
+        completed_actions=request.completed_actions,
+    )
+    if result.get("status") == "error":
+        raise HTTPException(status_code=400, detail=result["message"])
+    return result
+
+
+@router.post("/provider/enroll/voice")
+def provider_enroll_voice(request: ProviderVoiceEnrollRequest):
+    """Enroll voice via the registered provider."""
+    import base64
+    engine = get_engine()
+    audio_samples = [base64.b64decode(s) for s in request.audio_samples_base64]
+    return engine.enroll_voice_via_provider(request.user_id, audio_samples)
+
+
+@router.post("/provider/enroll/face")
+def provider_enroll_face(request: ProviderFaceEnrollRequest):
+    """Enroll face via the registered provider."""
+    import base64
+    engine = get_engine()
+    image_samples = [base64.b64decode(s) for s in request.image_samples_base64]
+    return engine.enroll_face_via_provider(request.user_id, image_samples)
+
+
+@router.get("/providers")
+def get_providers_status():
+    """Get status of all registered verification providers."""
+    engine = get_engine()
+    return engine.get_providers_status()
