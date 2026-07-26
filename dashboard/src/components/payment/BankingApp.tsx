@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { AlertTriangle, Lock, Home, Clock, QrCode, User } from 'lucide-react'
 import { HomeScreen } from './HomeScreen'
 import { SendMoneyFlow } from './SendMoneyFlow'
+import { OnboardingFlow } from './OnboardingFlow'
 import {
   QRScanScreen, MobileRechargeScreen, ElectricityScreen,
   FASTagScreen, InsuranceScreen, CreditCardScreen,
@@ -12,7 +13,7 @@ import { ACCOUNT } from './bankData'
 import { aegisSDK } from '../../services/sdk/AegisBehavioralSDK'
 
 type Screen =
-  | 'home' | 'send' | 'history' | 'scan' | 'profile'
+  | 'onboarding' | 'home' | 'send' | 'history' | 'scan' | 'profile'
   | 'qr' | 'mobile' | 'electricity' | 'fasttag' | 'insurance' | 'credit'
 
 type FlowStep = 'contacts' | 'amount' | 'review' | 'pin' | 'processing' | 'success'
@@ -22,10 +23,11 @@ interface BankingAppProps {
   decision: string
   cognitiveState: string
   onScreenChange?: (screen: string) => void
+  skipOnboarding?: boolean
 }
 
-export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, cognitiveState, onScreenChange }) => {
-  const [screen, setScreen] = useState<Screen>('home')
+export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, cognitiveState, onScreenChange, skipOnboarding = false }) => {
+  const [screen, setScreen] = useState<Screen>(skipOnboarding ? 'home' : 'onboarding')
   const [flowStep, setFlowStep] = useState<FlowStep>('contacts')
   const [balance, setBalance] = useState(ACCOUNT.balance)
   const [blocked, setBlocked] = useState(false)
@@ -69,6 +71,10 @@ export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, co
 
   const renderScreen = () => {
     switch (screen) {
+      case 'onboarding':
+        return (
+          <OnboardingFlow onComplete={() => navigateTo('home')} />
+        )
       case 'send':
         return (
           <SendMoneyFlow
@@ -107,6 +113,7 @@ export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, co
   }
 
   const isUtility = !['home', 'history', 'qr', 'profile'].includes(screen)
+  const showBottomNav = screen !== 'onboarding'
 
   return (
     <div style={{ background: '#070b13', borderRadius: 16, border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%', position: 'relative' }}>
@@ -124,6 +131,7 @@ export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, co
       </div>
 
       {/* Bottom Nav */}
+      {showBottomNav && (
       <div style={{ display: 'flex', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(7,11,19,0.97)', backdropFilter: 'blur(10px)', flexShrink: 0 }}>
         {navItems.map(item => {
           const Icon = item.icon
@@ -142,10 +150,11 @@ export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, co
           )
         })}
       </div>
+      )}
 
-      {/* BLOCK Overlay */}
+      {/* BLOCK Overlay — only shows when user is in a transaction flow */}
       <AnimatePresence>
-        {(blocked || decision === 'BLOCK') && (
+        {(blocked || (decision === 'BLOCK' && screen === 'send')) && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(6px)', borderRadius: 16 }}>
             <motion.div initial={{ scale: 0.88, y: 20 }} animate={{ scale: 1, y: 0 }}
@@ -188,7 +197,7 @@ export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, co
               </p>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setStepUp(false)} style={{ flex: 1, padding: '9px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.4)', fontSize: 11, cursor: 'pointer', fontFamily: 'Space Grotesk' }}>Cancel</button>
-                <button onClick={() => { setStepUp(false); setFlowStep('pin') }} style={{ flex: 1, padding: '9px', borderRadius: 10, border: 'none', background: '#F59E0B', color: '#000', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'Space Grotesk' }}>Verify OTP</button>
+                <button onClick={() => { setStepUp(false); navigateToFlowScreen('pin') }} style={{ flex: 1, padding: '9px', borderRadius: 10, border: 'none', background: '#F59E0B', color: '#000', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'Space Grotesk' }}>Enter MPIN</button>
               </div>
             </motion.div>
           </motion.div>
