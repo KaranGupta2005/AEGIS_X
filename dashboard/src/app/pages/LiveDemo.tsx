@@ -39,13 +39,10 @@ const LiveDemo: React.FC = () => {
   }
 
   return (
-    <div style={{ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {/* Scenario bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-        <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', letterSpacing: '0.12em' }}>
-          DEMO SCENARIO
-        </span>
-        <div style={{ display: 'flex', gap: 6, flex: 1 }}>
+    <div style={{ height: 'calc(100dvh - 80px)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Scenario bar — premium pill-style selector */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 4, padding: 3, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
           {SCENARIOS.map(s => {
             const Icon = s.icon
             const active = activeScenario === s.key
@@ -53,50 +50,66 @@ const LiveDemo: React.FC = () => {
               <motion.button
                 key={s.key}
                 onClick={() => startScenario(s.key)}
-                whileTap={{ scale: 0.95 }}
+                whileTap={{ scale: 0.96 }}
                 animate={{
-                  background: active ? `${s.color}12` : 'rgba(255,255,255,0.02)',
-                  borderColor: active ? `${s.color}50` : 'rgba(255,255,255,0.07)',
+                  background: active ? `${s.color}15` : 'transparent',
                 }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '6px 14px', borderRadius: 8,
-                  border: '1px solid', cursor: 'pointer',
-                  color: active ? s.color : 'rgba(255,255,255,0.4)',
+                  padding: '7px 14px', borderRadius: 8,
+                  border: 'none', cursor: 'pointer',
+                  color: active ? s.color : 'rgba(255,255,255,0.35)',
                   fontSize: 11, fontWeight: active ? 700 : 500,
-                  fontFamily: 'Space Grotesk', transition: 'color 0.15s',
+                  fontFamily: 'Space Grotesk', transition: 'all 0.2s',
+                  position: 'relative',
                 }}
               >
-                <Icon size={12} />
-                {s.label}
-                {active && <span style={{ fontSize: 7, fontFamily: 'JetBrains Mono', opacity: 0.6 }}>{s.desc}</span>}
+                {active && (
+                  <motion.div layoutId="scenarioActive" style={{
+                    position: 'absolute', inset: 0, borderRadius: 8,
+                    border: `1px solid ${s.color}40`,
+                    background: `${s.color}08`,
+                  }} transition={{ type: 'spring', stiffness: 400, damping: 30 }} />
+                )}
+                <Icon size={13} style={{ position: 'relative', zIndex: 1 }} />
+                <span style={{ position: 'relative', zIndex: 1 }}>{s.label}</span>
               </motion.button>
             )
           })}
         </div>
 
-        {/* Connection status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ flex: 1 }} />
+
+        {/* Live badge */}
+        <motion.div
+          animate={{ opacity: isConnected ? 1 : 0.5 }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 20, background: isConnected ? 'rgba(16,185,129,0.06)' : 'rgba(107,114,128,0.06)', border: `1px solid ${isConnected ? 'rgba(16,185,129,0.2)' : 'rgba(107,114,128,0.15)'}` }}>
           <motion.div
-            animate={isConnected ? { scale: [1, 1.4, 1], opacity: [1, 0.4, 1] } : {}}
+            animate={isConnected ? { scale: [1, 1.5, 1], opacity: [1, 0.3, 1] } : {}}
             transition={{ duration: 2, repeat: Infinity }}
-            style={{ width: 6, height: 6, borderRadius: '50%', background: isConnected ? '#10B981' : '#6B7280' }}
+            style={{ width: 7, height: 7, borderRadius: '50%', background: isConnected ? '#10B981' : '#6B7280' }}
           />
-          <span style={{ fontSize: 8, color: isConnected ? '#10B981' : '#6B7280', fontFamily: 'JetBrains Mono', fontWeight: 700 }}>
+          <span style={{ fontSize: 9, color: isConnected ? '#10B981' : '#6B7280', fontFamily: 'JetBrains Mono', fontWeight: 700 }}>
             {isConnected ? 'LIVE' : 'OFFLINE'}
           </span>
-          <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.2)', fontFamily: 'JetBrains Mono' }}>E#{eventCount}</span>
-        </div>
+          <span style={{ width: 1, height: 12, background: 'rgba(255,255,255,0.06)' }} />
+          <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', fontFamily: 'JetBrains Mono' }}>W{eventCount}</span>
+        </motion.div>
       </div>
+
+      {/* Scenario description — subtle */}
+      <motion.div
+        key={activeScenario}
+        initial={{ opacity: 0, y: -4 }}
+        animate={{ opacity: 1, y: 0 }}
+        style={{ padding: '6px 14px', borderRadius: 8, background: `${SCENARIOS.find(s => s.key === activeScenario)?.color}06`, borderLeft: `3px solid ${SCENARIOS.find(s => s.key === activeScenario)?.color}40`, flexShrink: 0 }}>
+        <span style={{ fontSize: 9, color: `${SCENARIOS.find(s => s.key === activeScenario)?.color}CC`, fontFamily: 'Space Grotesk', fontWeight: 500 }}>
+          {SCENARIOS.find(s => s.key === activeScenario)?.info}
+        </span>
+      </motion.div>
 
       {/* Main split — Banking App + Console */}
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12, minHeight: 0 }} className="demo-grid">
-        {/* Scenario info banner */}
-        <div style={{ gridColumn: '1 / -1', padding: '6px 12px', borderRadius: 8, background: `${SCENARIOS.find(s => s.key === activeScenario)?.color}08`, border: `1px solid ${SCENARIOS.find(s => s.key === activeScenario)?.color}20`, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 9, color: SCENARIOS.find(s => s.key === activeScenario)?.color, fontFamily: 'Space Grotesk', fontWeight: 600 }}>
-            {SCENARIOS.find(s => s.key === activeScenario)?.info}
-          </span>
-        </div>
         {/* LEFT: Banking App */}
         <div className="banking-app-mobile">
           <BankingApp
