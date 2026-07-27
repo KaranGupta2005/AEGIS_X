@@ -27,7 +27,8 @@ interface BankingAppProps {
 }
 
 export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, cognitiveState, onScreenChange, skipOnboarding = false }) => {
-  const [screen, setScreen] = useState<Screen>(skipOnboarding ? 'home' : 'onboarding')
+  const onboardingDone = skipOnboarding || localStorage.getItem('aegisx_onboarding_done') === 'true'
+  const [screen, setScreen] = useState<Screen>(onboardingDone ? 'home' : 'onboarding')
   const [flowStep, setFlowStep] = useState<FlowStep>('contacts')
   const [balance, setBalance] = useState(ACCOUNT.balance)
   const [blocked, setBlocked] = useState(false)
@@ -78,6 +79,7 @@ export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, co
         return (
           <SendMoneyFlow
             trustScore={trustScore}
+            userId="demo_user"
             onBack={() => { navigateTo('home'); navigateToFlowScreen('contacts') }}
             onBlock={() => setBlocked(true)}
             onSuccess={(amt) => {

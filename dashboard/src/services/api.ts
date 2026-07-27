@@ -324,12 +324,11 @@ export function createSimulator(
         event.typing_speed_cps = 3.2 + Math.sin(t * 1.1) * 0.8 + Math.random() * 0.8
         event.typing_rhythm_variance = 28 + Math.sin(t * 0.7) * 10
         event.interaction_intensity = Math.round(9 + Math.random() * 4)
-        txAmount = Math.round(1500 + Math.sin(step * 0.2) * 1000 + Math.random() * 2000)
+        // Normal user browses — no simulated transactions (keeps trust stable)
       } else if (phase <= 14) {
         event.typing_speed_cps = 0.8 + Math.random() * 0.4
         event.scroll_speed_mean = 0.25 + Math.random() * 0.15
         event.touch_duration_mean = 135 + Math.random() * 30
-        txAmount = Math.round(2000 + Math.random() * 2500)
       } else if (phase <= 18) {
         event.scroll_speed_mean = 0.7 + Math.sin(t * 0.5) * 0.3
         event.interaction_intensity = Math.round(4 + Math.random() * 3)

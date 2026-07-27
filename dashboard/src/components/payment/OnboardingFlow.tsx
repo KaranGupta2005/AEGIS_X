@@ -93,7 +93,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
               else setMpinConfirm(p => p.slice(0, -1))
             }} />}
             {step === 'delegate' && <DelegateStep onNext={next} onSkip={next} />}
-            {step === 'complete' && <CompleteStep onContinue={onComplete} />}
+            {step === 'complete' && <CompleteStep onContinue={() => { localStorage.setItem('aegisx_onboarding_done', 'true'); onComplete() }} />}
 
           </motion.div>
         </AnimatePresence>

@@ -151,6 +151,36 @@ def health():
     return {"status": "running", "project": "AEGIS-X", "version": "2.0"}
 
 
+@app.get("/health", tags=["Health"])
+def health_detailed():
+    """Detailed health check verifying all subsystems are operational."""
+    processor = get_processor()
+    checks = {
+        "pipeline": processor._pipeline is not None,
+        "cognitive_model": processor._pipeline._cognitive_service._model is not None,
+        "embedding_service": processor._pipeline._embedding_service is not None,
+        "event_processor": True,
+    }
+    # Check verification providers
+    try:
+        from backend.api.verification_routes import get_engine
+        engine = get_engine()
+        providers = engine.get_providers_status()
+        checks["voice_provider"] = providers.get("voice_verifier") is not None
+        checks["face_provider"] = providers.get("face_verifier") is not None
+        checks["liveness_provider"] = providers.get("liveness") is not None
+    except Exception:
+        checks["providers"] = False
+
+    all_healthy = all(checks.values())
+    return {
+        "status": "healthy" if all_healthy else "degraded",
+        "checks": checks,
+        "project": "AEGIS-X",
+        "version": "2.0",
+    }
+
+
 @app.get("/status", tags=["Health"])
 def system_status():
     processor = get_processor()
@@ -170,7 +200,16 @@ def system_metrics():
 
 
 @app.websocket("/ws/{user_id}")
-async def websocket_sdk(websocket: WebSocket, user_id: str, session_id: Optional[str] = Query(default=None)):
+async def websocket_sdk(websocket: WebSocket, user_id: str, session_id: Optional[str] = Query(default=None), token: Optional[str] = Query(default=None)):
+    # Validate token if provided (skip in demo mode for backward compat)
+    import os
+    if token and os.getenv("AEGISX_WS_AUTH", "false").lower() == "true":
+        from backend.api.auth_routes import _verify_token
+        payload = _verify_token(token)
+        if not payload:
+            await websocket.close(code=4001, reason="Invalid token")
+            return
+
     await connection_manager.connect_sdk(websocket, user_id)
     processor = get_processor()
     session_info = processor.start_session(user_id, session_id or f"ws_{user_id}")

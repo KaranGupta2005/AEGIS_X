@@ -8,6 +8,7 @@ type FlowStep = 'contacts' | 'amount' | 'review' | 'pin' | 'processing' | 'succe
 
 interface SendMoneyFlowProps {
   trustScore: number
+  userId: string
   onBack: () => void
   onBlock: () => void
   onSuccess: (amount: number, contact: (typeof CONTACTS)[0]) => void
@@ -18,7 +19,7 @@ interface SendMoneyFlowProps {
 const PIN_LENGTH = 6
 
 export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
-  trustScore, onBack, onBlock, onSuccess, currentStep, onStepChange,
+  trustScore, userId, onBack, onBlock, onSuccess, currentStep, onStepChange,
 }) => {
   const [selectedContact, setSelectedContact] = useState(CONTACTS[0])
   const [amount, setAmount] = useState('')
@@ -55,7 +56,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
       // Quick face direction
       setChallenge({
         challenge_id: `face_quick_${Date.now()}`,
-        user_id: 'demo_user',
+        user_id: userId,
         session_id: 'sess_payment',
         verification_type: 'FACE_LIVENESS',
         risk_source: 'transaction_risk',
@@ -80,7 +81,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
       // Voice phrase
       try {
         const ch = await initiateVerification({
-          user_id: 'demo_user',
+          user_id: userId,
           session_id: 'sess_payment',
           trust_score: currentTrust / 100,
           cognitive_state: 'focused',
@@ -93,7 +94,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
       } catch {
         setChallenge({
           challenge_id: `voice_${Date.now()}`,
-          user_id: 'demo_user', session_id: 'sess_payment',
+          user_id: userId, session_id: 'sess_payment',
           verification_type: 'VOICE_CHALLENGE', risk_source: 'behavioral_drift',
           status: 'PENDING', trust_before: currentTrust / 100, trust_after: 0,
           confidence: 0, latency_ms: 0,
@@ -110,7 +111,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
     // Trust < 50% → Full face liveness
     try {
       const ch = await initiateVerification({
-        user_id: 'demo_user',
+        user_id: userId,
         session_id: 'sess_payment',
         trust_score: currentTrust / 100,
         cognitive_state: 'distressed',
@@ -124,7 +125,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
     } catch {
       setChallenge({
         challenge_id: `face_full_${Date.now()}`,
-        user_id: 'demo_user', session_id: 'sess_payment',
+        user_id: userId, session_id: 'sess_payment',
         verification_type: 'FACE_LIVENESS', risk_source: 'behavioral_drift',
         status: 'PENDING', trust_before: currentTrust / 100, trust_after: 0,
         confidence: 0, latency_ms: 0, phrase: '',

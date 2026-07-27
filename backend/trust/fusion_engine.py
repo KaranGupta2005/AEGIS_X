@@ -402,7 +402,13 @@ class TrustFusionEngine:
         self._decision = DecisionEngine(policy)
         self._explainer = ExplainabilityEngine()
         self._history = TrustHistoryService()
-        self._prior_trust: Dict[str, float] = {}  # session → last trust
+        self._prior_trust: Dict[str, float] = {}  # session → last trust (evicted on session end)
+
+    def clear_session(self, user_id: str, session_id: str):
+        """Evict session state to prevent memory leak."""
+        key = f"{user_id}:{session_id}"
+        self._prior_trust.pop(key, None)
+        self._collector.clear(user_id, session_id)
 
     # ── SUBMIT EVIDENCE ───────────────────────────────────────────────────
 

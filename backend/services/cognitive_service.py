@@ -68,15 +68,19 @@ class CognitiveService:
 
     def __init__(self, model_path: Optional[Path] = None):
         path = model_path or MODEL_PATH
-        if not path.exists():
-            raise FileNotFoundError(
-                f"Cognitive model not found at {path}. "
-                f"Run 'python scripts/train_cognitive_model.py' first."
-            )
-        self._model = load(path)
+        self._model = None
         self._feature_names = COGNITIVE_FEATURES
+        if not path.exists():
+            print(f"[AEGIS-X] WARNING: Cognitive model not found at {path}. Using fallback (always 'calm').")
+            return
+        try:
+            self._model = load(path)
+        except Exception as e:
+            print(f"[AEGIS-X] WARNING: Failed to load cognitive model: {e}. Using fallback.")
 
     def predict_state(self, features: Dict[str, float]) -> str:
+        if self._model is None:
+            return "calm"  # Safe fallback
         vector = self._extract_feature_vector(features)
         prediction = self._model.predict([vector])[0]
         return str(prediction)
@@ -95,6 +99,12 @@ class CognitiveService:
 
     def assess(self, features: Dict[str, float]) -> Dict:
         """Full cognitive assessment — primary interface for the pipeline."""
+        if self._model is None:
+            return {
+                "state": "calm", "stability_score": 1.0, "confidence": 0.5,
+                "alert": None, "severity": 0, "probabilities": {"calm": 1.0},
+                "cognitive_component": 0.20,
+            }
         vector = self._extract_feature_vector(features)
 
         state = str(self._model.predict([vector])[0])

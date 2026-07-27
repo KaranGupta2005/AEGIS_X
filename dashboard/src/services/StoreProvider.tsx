@@ -29,8 +29,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const continuousWsRef = useRef<WebSocket | null>(null)
   const continuousSessionRef = useRef<{ userId: string; sessionId: string } | null>(null)
   const sessionStartTimeRef = useRef<number>(Date.now())
+  const sdkInitializedRef = useRef(false)
 
   useEffect(() => {
+    // Prevent double-initialization in React StrictMode
+    if (sdkInitializedRef.current) return
+    sdkInitializedRef.current = true
+
     // Start the continuous monitoring session immediately on mount
     const userId = `live_session_${Date.now()}`
     const sessionId = `sess_${Math.random().toString(36).slice(2, 14)}`

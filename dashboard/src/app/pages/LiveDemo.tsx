@@ -7,9 +7,9 @@ import { BankingApp } from '../../components/payment/BankingApp'
 import { AegisConsole } from '../../components/sdk/AegisConsole'
 
 const SCENARIOS = [
-  { key: 'normal' as SimulatorScenario, label: 'Normal User', icon: User, color: '#10B981', desc: 'Genuine session' },
-  { key: 'scam' as SimulatorScenario, label: 'Scam Call', icon: Phone, color: '#F59E0B', desc: 'Social engineering' },
-  { key: 'malware' as SimulatorScenario, label: 'Malware Bot', icon: Bot, color: '#EF4444', desc: 'Remote access' },
+  { key: 'normal' as SimulatorScenario, label: 'Normal User', icon: User, color: '#10B981', desc: 'Genuine session', info: 'A genuine user browsing and paying. Trust stays high. Minimal verification.' },
+  { key: 'scam' as SimulatorScenario, label: 'Scam Call', icon: Phone, color: '#F59E0B', desc: 'Social engineering', info: 'User receives a scam call. Hesitation increases, typing slows, panic builds. Watch trust decline.' },
+  { key: 'malware' as SimulatorScenario, label: 'Malware Bot', icon: Bot, color: '#EF4444', desc: 'Remote access', info: 'Remote access malware controlling the device. Perfect timing, zero variance, inhuman speed.' },
 ]
 
 const LiveDemo: React.FC = () => {
@@ -91,6 +91,12 @@ const LiveDemo: React.FC = () => {
 
       {/* Main split — Banking App + Console */}
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12, minHeight: 0 }}>
+        {/* Scenario info banner */}
+        <div style={{ gridColumn: '1 / -1', padding: '6px 12px', borderRadius: 8, background: `${SCENARIOS.find(s => s.key === activeScenario)?.color}08`, border: `1px solid ${SCENARIOS.find(s => s.key === activeScenario)?.color}20`, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 9, color: SCENARIOS.find(s => s.key === activeScenario)?.color, fontFamily: 'Space Grotesk', fontWeight: 600 }}>
+            {SCENARIOS.find(s => s.key === activeScenario)?.info}
+          </span>
+        </div>
         {/* LEFT: Banking App */}
         <BankingApp
           trustScore={trustScore}
