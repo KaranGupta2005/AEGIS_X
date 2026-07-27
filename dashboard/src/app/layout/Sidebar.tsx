@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import {
   Radio, TrendingDown, Brain, FileWarning, RotateCcw,
   PanelLeftClose, PanelLeftOpen, Shield, LogOut, Settings, HelpCircle,
-  ChevronLeft, ChevronRight, Wifi, WifiOff, CreditCard, Sun, Moon, GitBranch, Lock,
+  ChevronLeft, ChevronRight, Wifi, WifiOff, CreditCard, Sun, Moon, GitBranch,
 } from 'lucide-react'
 import { logout, getUsername } from '../../services/auth'
 import { useStore } from '../../services/store'

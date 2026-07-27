@@ -100,6 +100,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     ws.onclose = () => {
       dispatch({ type: 'SET_CONNECTED', payload: false })
+      // Reconnect with exponential backoff (max 3 attempts)
+      let attempts = 0
+      const reconnect = () => {
+        if (attempts >= 3) return
+        attempts++
+        const delay = Math.min(2000 * Math.pow(2, attempts - 1), 10000)
+        setTimeout(() => {
+          if (continuousWsRef.current?.readyState === WebSocket.OPEN) return
+          try {
+            const newWs = new WebSocket(`${WS_BASE}/ws/${userId}?session_id=${sessionId}`)
+            continuousWsRef.current = newWs
+            newWs.onopen = () => { dispatch({ type: 'SET_CONNECTED', payload: true }); attempts = 0 }
+            newWs.onmessage = ws.onmessage
+            newWs.onclose = () => { dispatch({ type: 'SET_CONNECTED', payload: false }); reconnect() }
+          } catch { /* give up */ }
+        }, delay)
+      }
+      reconnect()
     }
 
     return () => {

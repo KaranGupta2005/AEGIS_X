@@ -1,8 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { ArrowLeft, ArrowRight, Check, ChevronRight, Loader, Mic, Camera, Shield } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, ChevronRight, Loader, Mic, Camera } from 'lucide-react'
 import { CONTACTS } from './bankData'
-import { AnimatedNumber } from '../common/AnimatedNumber'
 import { initiateVerification, verifyVoice, verifyFace, VerificationChallenge } from '../../services/verificationApi'
 
 type FlowStep = 'contacts' | 'amount' | 'review' | 'pin' | 'processing' | 'success' | 'voice_verify' | 'face_verify'
@@ -11,7 +10,6 @@ interface SendMoneyFlowProps {
   trustScore: number
   onBack: () => void
   onBlock: () => void
-  onStepUp: () => void
   onSuccess: (amount: number, contact: (typeof CONTACTS)[0]) => void
   currentStep: FlowStep
   onStepChange: (step: FlowStep) => void
@@ -20,7 +18,7 @@ interface SendMoneyFlowProps {
 const PIN_LENGTH = 6
 
 export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
-  trustScore, onBack, onBlock, onStepUp, onSuccess, currentStep, onStepChange,
+  trustScore, onBack, onBlock, onSuccess, currentStep, onStepChange,
 }) => {
   const [selectedContact, setSelectedContact] = useState(CONTACTS[0])
   const [amount, setAmount] = useState('')
@@ -28,8 +26,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
   const [challenge, setChallenge] = useState<VerificationChallenge | null>(null)
   const [verifying, setVerifying] = useState(false)
   const [verificationResult, setVerificationResult] = useState<string | null>(null)
-  const [trustAtPayment, setTrustAtPayment] = useState(95) // Captured at payment time
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [trustAtPayment, setTrustAtPayment] = useState(95)
 
   const steps = ['contacts', 'amount', 'review', 'pin', 'processing', 'success']
   const stepIndex = steps.indexOf(currentStep)
@@ -44,12 +41,12 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
     setTrustAtPayment(currentTrust)
 
     // AEGIS-X Adaptive Verification:
-    // Trust > 95%  → Straight to MPIN (behavioral identity rock-solid)
-    // Trust 70-95% → Quick face direction check (look left/right)
+    // Trust > 90%  → Straight to MPIN (behavioral identity confirmed)
+    // Trust 70-90% → Quick face direction check (look left/right)
     // Trust 50-70% → Voice phrase verification
     // Trust < 50%  → Full face liveness (blink + smile + turn)
 
-    if (currentTrust > 95) {
+    if (currentTrust > 90) {
       onStepChange('pin')
       return
     }

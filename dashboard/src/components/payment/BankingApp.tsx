@@ -31,7 +31,6 @@ export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, co
   const [flowStep, setFlowStep] = useState<FlowStep>('contacts')
   const [balance, setBalance] = useState(ACCOUNT.balance)
   const [blocked, setBlocked] = useState(false)
-  const [stepUp, setStepUp] = useState(false)
 
   // Notify SDK and parent of every screen transition
   const navigateTo = (s: Screen) => {
@@ -81,7 +80,6 @@ export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, co
             trustScore={trustScore}
             onBack={() => { navigateTo('home'); navigateToFlowScreen('contacts') }}
             onBlock={() => setBlocked(true)}
-            onStepUp={() => setStepUp(true)}
             onSuccess={(amt) => {
               setBalance(b => b - amt)
               aegisSDK.setTransactionContext({ frequency: (aegisSDK.session?.navigationPath.filter(s => s === 'success').length ?? 0) + 1 })

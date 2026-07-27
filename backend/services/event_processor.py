@@ -36,6 +36,8 @@ from backend.services.baseline_service import BaselineService
 from backend.services.feature_engineering import FeatureEngineer
 from backend.services.cache_service import CacheService
 from backend.services.adaptive_learning import AdaptiveLearningService, LearningResult
+from backend.trust.fusion_engine import TrustFusionEngine
+from backend.security.containment import SessionContainmentService
 
 
 # Audit log directory
@@ -193,6 +195,8 @@ class EventProcessor:
         self._alert_engine = AlertEngine()
         self._audit_logger = AuditLogger()
         self._cache = CacheService()
+        self._fusion_engine = TrustFusionEngine()
+        self._containment = SessionContainmentService()
 
         # Active pipeline contexts: user_id → PipelineContext
         self._contexts: Dict[str, PipelineContext] = {}
@@ -530,6 +534,32 @@ class EventProcessor:
         # ─── TRACK BLOCK STATE ─────────────────────────────────────────────
         if result.decision == "BLOCK":
             self._blocked_users[user_id] = result.explanation
+
+        # ─── FEED TRUST FUSION ENGINE (evidence-based trust) ──────────────
+        session_id = self._session_ids.get(user_id, "unknown")
+        self._fusion_engine.ingest_behavioral_event(
+            user_id=user_id,
+            session_id=session_id,
+            similarity=result.similarity,
+            cognitive_state=result.cognitive_state,
+            cognitive_stability=result.cognitive_stability,
+            drift_detected=result.drift_detected,
+            drift_severity=result.drift_severity,
+            anomaly_score=result.anomaly_score,
+            velocity=result.velocity,
+        )
+
+        # ─── AUTO-EVALUATE SECURITY CONTAINMENT ───────────────────────────
+        self._containment.evaluate_and_update(
+            user_id=user_id,
+            session_id=session_id,
+            trust_score=result.effective_trust,
+            cognitive_state=result.cognitive_state,
+            drift_detected=result.drift_detected,
+            drift_severity=result.drift_severity,
+            velocity=result.velocity,
+            anomaly_score=result.anomaly_score,
+        )
 
         # ─── BUILD RESPONSE ───────────────────────────────────────────────
         return self._build_response(user_id, result, alerts)

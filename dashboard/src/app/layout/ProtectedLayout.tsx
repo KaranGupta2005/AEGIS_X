@@ -4,6 +4,26 @@ import Sidebar from './Sidebar'
 import { StoreProvider } from '../../services/StoreProvider'
 import { isAuthenticated } from '../../services/auth'
 
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
+  state = { hasError: false, error: '' }
+  static getDerivedStateFromError(error: Error) { return { hasError: true, error: error.message } }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 40, textAlign: 'center' }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#EF4444', marginBottom: 8, fontFamily: 'Space Grotesk' }}>Something went wrong</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono', marginBottom: 16 }}>{this.state.error}</div>
+          <button onClick={() => { this.setState({ hasError: false }); window.location.reload() }}
+            style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#3B82F6', color: 'white', fontSize: 11, cursor: 'pointer' }}>
+            Reload
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 const ProtectedLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false)
 
@@ -26,7 +46,9 @@ const ProtectedLayout: React.FC = () => {
           background: 'var(--bg-page)', position: 'relative',
         }}>
           <div style={{ position: 'relative', zIndex: 1, maxWidth: 1400 }}>
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
       </div>
