@@ -11,7 +11,28 @@ router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 JWT_SECRET = os.getenv("AEGISX_SESSION_SECRET", "aegisx_hackathon_2026_secret")
 TOKEN_EXPIRY = 86400
 
-_users_db: dict = {}
+# File-backed persistent user store (survives restarts)
+import json
+from pathlib import Path
+
+_USERS_FILE = Path(__file__).parent.parent.parent / "data" / "users.json"
+_USERS_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _load_users() -> dict:
+    if _USERS_FILE.exists():
+        try:
+            return json.loads(_USERS_FILE.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, IOError):
+            pass
+    return {}
+
+
+def _save_users(users: dict):
+    _USERS_FILE.write_text(json.dumps(users, indent=2), encoding="utf-8")
+
+
+_users_db: dict = _load_users()
 
 
 class RegisterRequest(BaseModel):
@@ -105,6 +126,7 @@ async def register(req: RegisterRequest):
         "salt": salt,
         "created_at": time.time(),
     }
+    _save_users(_users_db)
 
     token = _generate_token(user_id, req.username)
 

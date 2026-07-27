@@ -66,18 +66,18 @@ ws_rate_limiter = WebSocketRateLimiter()
 
 # Self-ping to prevent Render free tier sleep
 async def keep_alive():
-    """Ping self every 10 minutes to prevent Render spin-down."""
+    """Ping self every 10 minutes to prevent Render spin-down. Only runs in production."""
     import os
     url = os.getenv("RENDER_EXTERNAL_URL", "")
     if not url:
-        return
+        return  # Skip in local development
     async with httpx.AsyncClient() as client:
         while True:
             try:
                 await client.get(f"{url}/")
             except Exception:
                 pass
-            await asyncio.sleep(600)  # every 10 minutes
+            await asyncio.sleep(600)
 
 
 @asynccontextmanager

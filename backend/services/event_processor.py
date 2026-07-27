@@ -110,21 +110,43 @@ class AlertEngine:
 class AuditLogger:
     """
     Records every trust decision for compliance and traceability.
-
-    Banks require complete audit trails:
-    - What happened? (event details)
-    - What was decided? (ALLOW/STEP_UP/BLOCK)
-    - Why? (reasons, scores, cognitive state)
-    - When? (timestamp)
-    - For whom? (user_id, session_id)
-
-    Stores: JSON lines format (one JSON object per line, easy to parse).
-    Production: would write to PostgreSQL or dedicated logging service.
+    Dual storage: JSONL (human-readable) + SQLite (queryable).
     """
 
     def __init__(self, log_dir: Path = AUDIT_LOG_DIR):
         self._log_dir = log_dir
         self._log_dir.mkdir(parents=True, exist_ok=True)
+        # Initialize SQLite for structured queries
+        self._db_path = log_dir / "audit.db"
+        self._init_db()
+
+    def _init_db(self):
+        import sqlite3
+        conn = sqlite3.connect(str(self._db_path))
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS audit_decisions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                session_id TEXT NOT NULL,
+                event_number INTEGER,
+                trust_score REAL,
+                effective_trust REAL,
+                decision TEXT,
+                cognitive_state TEXT,
+                drift_detected INTEGER,
+                drift_severity TEXT,
+                velocity REAL,
+                transaction_amount REAL,
+                latency_ms REAL,
+                alerts TEXT,
+                reasons TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_decisions(user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_decisions(timestamp)")
+        conn.commit()
+        conn.close()
 
     def log_decision(
         self,
@@ -134,11 +156,6 @@ class AuditLogger:
         alerts: List[Dict],
         transaction_amount: float = 0.0,
     ):
-        """
-        Write a single decision record to the audit log.
-
-        Format: JSON Lines (one record per line, chronological).
-        """
         record = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "user_id": user_id,
@@ -159,12 +176,32 @@ class AuditLogger:
             "reasons": result.reasons,
         }
 
-        # Write to daily log file
+        # Write JSONL (human-readable backup)
         date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         log_file = self._log_dir / f"audit_{date_str}.jsonl"
 
         with open(log_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(record) + "\n")
+
+        # Write SQLite (structured, queryable)
+        try:
+            import sqlite3
+            conn = sqlite3.connect(str(self._db_path))
+            conn.execute(
+                """INSERT INTO audit_decisions (timestamp, user_id, session_id, event_number,
+                   trust_score, effective_trust, decision, cognitive_state, drift_detected,
+                   drift_severity, velocity, transaction_amount, latency_ms, alerts, reasons)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (record["timestamp"], user_id, session_id, record["event_number"],
+                 record["trust_score"], record["effective_trust"], record["decision"],
+                 record["cognitive_state"], int(record["drift_detected"]),
+                 record["drift_severity"], record["velocity"], transaction_amount,
+                 record["latency_ms"], json.dumps(record["alerts"]), json.dumps(record["reasons"]))
+            )
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass  # Non-critical: JSONL is the backup
 
 
 class EventProcessor:
