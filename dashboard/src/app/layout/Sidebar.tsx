@@ -12,6 +12,7 @@ import { useTheme } from '../../services/useTheme'
 
 const navItems = [
   { id: 'demo',      label: 'Live Demo',         icon: CreditCard,   color: 'var(--accent)',        path: '/app/demo'      },
+  { id: 'soc',       label: 'Command Center',    icon: Shield,       color: 'var(--accent)',        path: '/app/soc'       },
   { id: 'monitor',   label: 'Live Monitor',      icon: Radio,        color: 'var(--accent)',        path: '/app/monitor'   },
   { id: 'timeline',  label: 'Trust Timeline',    icon: TrendingDown, color: 'var(--accent-blue)',   path: '/app/timeline'  },
   { id: 'cognitive', label: 'Cognitive Analysis', icon: Brain,        color: 'var(--accent-purple)', path: '/app/cognitive' },
