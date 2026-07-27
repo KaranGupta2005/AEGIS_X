@@ -142,20 +142,64 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
   const handleVoiceVerifyComplete = async () => {
     if (!challenge) { onStepChange('pin'); return }
     setVerifying(true)
+    setVerificationResult(null)
+
     try {
-      const fakeAudio = btoa(String.fromCharCode(...Array.from({length: 100}, () => Math.floor(Math.random() * 256))))
-      const result = await verifyVoice(challenge.challenge_id, fakeAudio)
+      // Step 1: Record real audio from microphone (3 seconds)
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+      const chunks: Blob[] = []
+
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data) }
+
+      const recordingPromise = new Promise<string>((resolve) => {
+        mediaRecorder.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop())
+          const blob = new Blob(chunks, { type: 'audio/webm' })
+          const buffer = await blob.arrayBuffer()
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)))
+          resolve(base64)
+        }
+      })
+
+      mediaRecorder.start()
+      setVerificationResult('🎙️ Speak now...')
+      await new Promise(r => setTimeout(r, 3000))
+      mediaRecorder.stop()
+
+      const audioBase64 = await recordingPromise
+
+      // Step 2: Validate audio has real speech
+      const BACKEND = import.meta.env.VITE_BACKEND_URL || ''
+      const validateRes = await fetch(`${BACKEND}/api/v1/verify/validate/voice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          audio_base64: audioBase64,
+          expected_phrase: challenge.phrase || 'My voice is my identity',
+        }),
+      })
+      const validation = await validateRes.json()
+
+      if (!validation.valid || !validation.speech_detected) {
+        setVerificationResult(`✗ ${validation.reason || 'No speech detected — speak clearly'}`)
+        setVerifying(false)
+        setTimeout(() => setVerificationResult(null), 3000)
+        return
+      }
+
+      // Step 3: Speech validated — call speaker verification
+      const result = await verifyVoice(challenge.challenge_id, audioBase64)
       if (result.status === 'SUCCESS' || result.verified) {
         setVerificationResult('✓ Voice verified — identity confirmed')
         setTimeout(() => { setVerificationResult(null); onStepChange('pin') }, 1500)
       } else {
-        setVerificationResult('✗ Voice mismatch — transaction blocked')
-        setTimeout(() => { setVerificationResult(null); onBlock() }, 2000)
+        setVerificationResult('✗ Voice mismatch — try again')
+        setTimeout(() => setVerificationResult(null), 3000)
       }
-    } catch {
-      // Backend unavailable — accept for demo purposes
-      setVerificationResult('✓ Voice accepted')
-      setTimeout(() => { setVerificationResult(null); onStepChange('pin') }, 1200)
+    } catch (err) {
+      setVerificationResult('✗ Microphone unavailable — please allow mic access')
+      setTimeout(() => { setVerificationResult(null); onStepChange('pin') }, 2000)
     }
     setVerifying(false)
   }
@@ -163,20 +207,60 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
   const handleFaceVerifyComplete = async () => {
     if (!challenge) { onStepChange('pin'); return }
     setVerifying(true)
+    setVerificationResult(null)
+
     try {
-      const fakeImage = btoa(String.fromCharCode(...Array.from({length: 200}, () => Math.floor(Math.random() * 256))))
-      const result = await verifyFace(challenge.challenge_id, fakeImage, challenge.liveness_actions || ['blink', 'smile'])
+      // Step 1: Capture real frame from camera
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 240 } })
+      const video = document.createElement('video')
+      video.srcObject = stream
+      video.muted = true
+      await video.play()
+
+      // Wait for video to be ready
+      await new Promise(r => setTimeout(r, 1000))
+
+      // Capture frame to canvas
+      const canvas = document.createElement('canvas')
+      canvas.width = 320; canvas.height = 240
+      canvas.getContext('2d')!.drawImage(video, 0, 0, 320, 240)
+      const frameBase64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1]
+
+      stream.getTracks().forEach(t => t.stop())
+
+      // Step 2: Validate with Gemini Vision — is there a REAL face?
+      const BACKEND = import.meta.env.VITE_BACKEND_URL || ''
+      const validateRes = await fetch(`${BACKEND}/api/v1/verify/validate/face`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image_base64: frameBase64,
+          required_action: challenge.liveness_actions?.[0] || 'look forward',
+        }),
+      })
+      const validation = await validateRes.json()
+
+      if (!validation.valid || !validation.face_detected) {
+        setVerificationResult(`✗ ${validation.reason || 'No face detected — uncover camera and try again'}`)
+        setVerifying(false)
+        // Allow retry after 2 seconds
+        setTimeout(() => setVerificationResult(null), 3000)
+        return
+      }
+
+      // Step 3: Face validated — call biometric verification
+      const result = await verifyFace(challenge.challenge_id, frameBase64, challenge.liveness_actions || ['blink', 'smile'])
       if (result.status === 'SUCCESS' || result.verified) {
         setVerificationResult('✓ Face verified — liveness confirmed')
         setTimeout(() => { setVerificationResult(null); onStepChange('pin') }, 1500)
       } else {
-        setVerificationResult('✗ Face mismatch — transaction blocked')
-        setTimeout(() => { setVerificationResult(null); onBlock() }, 2000)
+        setVerificationResult('✗ Face mismatch — try again')
+        setTimeout(() => setVerificationResult(null), 3000)
       }
-    } catch {
-      // Backend unavailable — accept for demo
-      setVerificationResult('✓ Liveness accepted')
-      setTimeout(() => { setVerificationResult(null); onStepChange('pin') }, 1200)
+    } catch (err) {
+      // Camera unavailable — show error
+      setVerificationResult('✗ Camera unavailable — please allow camera access')
+      setTimeout(() => { setVerificationResult(null); onStepChange('pin') }, 2000)
     }
     setVerifying(false)
   }

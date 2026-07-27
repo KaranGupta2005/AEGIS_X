@@ -298,3 +298,36 @@ def get_providers_status():
     """Get status of all registered verification providers."""
     engine = get_engine()
     return engine.get_providers_status()
+
+
+# ─── REAL BIOMETRIC VALIDATION (Gemini Vision) ────────────────────────────────
+
+class ValidateFaceRequest(BaseModel):
+    image_base64: str = Field(..., min_length=100)
+    required_action: str = Field(default="look forward")
+
+
+class ValidateVoiceRequest(BaseModel):
+    audio_base64: str = Field(..., min_length=50)
+    expected_phrase: str = Field(default="My voice is my identity")
+
+
+@router.post("/validate/face")
+def validate_face_frame(request: ValidateFaceRequest):
+    """
+    Validate that a real human face is visible in the frame using Gemini Vision.
+    Must pass BEFORE biometric verification proceeds.
+    """
+    from backend.services.biometric_validator import validate_face_frame
+    result = validate_face_frame(request.image_base64, request.required_action)
+    return result
+
+
+@router.post("/validate/voice")
+def validate_voice_audio(request: ValidateVoiceRequest):
+    """
+    Validate that audio contains real speech before speaker verification.
+    """
+    from backend.services.biometric_validator import validate_voice_audio
+    result = validate_voice_audio(request.audio_base64, request.expected_phrase)
+    return result
