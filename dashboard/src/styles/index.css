@@ -116,3 +116,127 @@ button:focus { outline: none; }
 .aegis-card:hover {
   box-shadow: var(--shadow-md);
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE & MOBILE — PWA native-app feel
+   ═══════════════════════════════════════════════════════════════ */
+
+/* PWA standalone mode — remove browser chrome spacing */
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Mobile-first responsive */
+@media (max-width: 768px) {
+  /* Hide sidebar on mobile — use bottom nav instead */
+  .desktop-sidebar { display: none !important; }
+
+  /* Main content fills screen */
+  main {
+    padding: 12px !important;
+  }
+
+  /* Live Demo: stack banking app + console vertically */
+  .demo-grid {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 1fr auto !important;
+    gap: 8px !important;
+  }
+
+  /* Console becomes a collapsed bottom sheet on mobile */
+  .aegis-console {
+    max-height: 45vh;
+    border-radius: 16px 16px 0 0 !important;
+    overflow-y: auto;
+  }
+
+  /* Touch-friendly tap targets */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Larger text for readability */
+  .trust-score-display {
+    font-size: 48px !important;
+  }
+}
+
+/* Tablet */
+@media (min-width: 769px) and (max-width: 1024px) {
+  main {
+    padding: 16px !important;
+  }
+}
+
+/* Prevent text selection on app-like elements */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* iOS rubber-band scrolling fix */
+.scroll-container {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Haptic-style tap feedback */
+.tap-target:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* Safe area padding for notched devices */
+.safe-area-bottom {
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+.safe-area-top {
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Mobile banking app container */
+.banking-app-mobile {
+  border-radius: 0 !important;
+  border: none !important;
+  height: 100% !important;
+}
+
+/* Smooth page transitions */
+.page-transition {
+  animation: fadeSlideIn 0.2s ease-out;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Touch ripple effect */
+.ripple {
+  position: relative;
+  overflow: hidden;
+}
+.ripple::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), rgba(255,255,255,0.15) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.ripple:active::after {
+  opacity: 1;
+}

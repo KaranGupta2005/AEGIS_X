@@ -228,8 +228,10 @@ export class AegisBehavioralSDK {
   private _onTouchStart = this._handleTouchStart.bind(this)
   private _onTouchEnd = this._handleTouchEnd.bind(this)
   private _onVisibilityChange = this._handleVisibilityChange.bind(this)
+  private _onDeviceOrientation = this._handleDeviceOrientation.bind(this)
   private _touchStartTime: number = 0
   private _touchArea: number = 0
+  private _orientationSamples: number[] = []
 
   // ── LIFECYCLE ────────────────────────────────────────────────────────────
 
@@ -265,6 +267,11 @@ export class AegisBehavioralSDK {
     document.addEventListener('touchstart', this._onTouchStart, { passive: true })
     document.addEventListener('touchend', this._onTouchEnd, { passive: true })
     document.addEventListener('visibilitychange', this._onVisibilityChange)
+
+    // Mobile-specific: device orientation for real gyroscope data
+    if (typeof DeviceOrientationEvent !== 'undefined') {
+      window.addEventListener('deviceorientation', this._onDeviceOrientation as any, { passive: true })
+    }
 
     // Start 2-second window emitter
     this._windowTimer = setInterval(() => this._flushWindow(), WINDOW_INTERVAL_MS)
@@ -447,10 +454,20 @@ export class AegisBehavioralSDK {
 
   private _handleVisibilityChange(): void {
     if (document.hidden) {
-      // App went to background — accumulate idle time
       this._isIdle = true
     } else {
       this._markActivity()
+    }
+  }
+
+  private _handleDeviceOrientation(e: DeviceOrientationEvent): void {
+    // Capture real gyroscope data on mobile devices
+    if (e.alpha !== null && e.beta !== null && e.gamma !== null) {
+      const magnitude = Math.sqrt((e.beta ?? 0) ** 2 + (e.gamma ?? 0) ** 2)
+      this._orientationSamples.push(magnitude)
+      if (this._orientationSamples.length > 50) {
+        this._orientationSamples = this._orientationSamples.slice(-50)
+      }
     }
   }
 
@@ -537,8 +554,16 @@ export class AegisBehavioralSDK {
     const hourOfDay = nowDate.getHours()
     const dayOfWeek = nowDate.getDay()
 
-    // Gyroscope: approximate from pointer variance on web
-    const gyroVariance = pointerVelocity > 2 ? 0.04 + Math.random() * 0.02 : 0.01 + Math.random() * 0.01
+    // Gyroscope: use real device orientation on mobile, approximate from pointer on web
+    let gyroVariance: number
+    if (this._orientationSamples.length > 3) {
+      const mean = this._orientationSamples.reduce((a, b) => a + b, 0) / this._orientationSamples.length
+      gyroVariance = this._orientationSamples.reduce((s, v) => s + (v - mean) ** 2, 0) / this._orientationSamples.length / 10000
+      gyroVariance = Math.min(0.5, gyroVariance)
+      this._orientationSamples = []
+    } else {
+      gyroVariance = pointerVelocity > 2 ? 0.04 + Math.random() * 0.02 : 0.01 + Math.random() * 0.01
+    }
 
     // Interaction intensity
     const interactionIntensity = Math.min(50,
@@ -653,6 +678,7 @@ export class AegisBehavioralSDK {
     document.removeEventListener('touchstart', this._onTouchStart)
     document.removeEventListener('touchend', this._onTouchEnd)
     document.removeEventListener('visibilitychange', this._onVisibilityChange)
+    window.removeEventListener('deviceorientation', this._onDeviceOrientation as any)
 
     // Finalize time on current screen
     if (this._session) {

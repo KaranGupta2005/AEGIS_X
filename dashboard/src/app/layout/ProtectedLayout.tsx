@@ -39,13 +39,16 @@ const ProtectedLayout: React.FC = () => {
 
   return (
     <StoreProvider>
-      <div style={{ display: 'flex', height: '100vh', background: 'var(--bg-page)', overflow: 'hidden' }}>
-        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(p => !p)} />
-        <main style={{
+      <div style={{ display: 'flex', height: '100dvh', background: 'var(--bg-page)', overflow: 'hidden' }}>
+        {/* Desktop sidebar (hidden on mobile via CSS) */}
+        <div className="desktop-sidebar">
+          <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(p => !p)} />
+        </div>
+        <main className="scroll-container" style={{
           flex: 1, overflow: 'auto', padding: '28px 36px', minWidth: 0,
           background: 'var(--bg-page)', position: 'relative',
         }}>
-          <div style={{ position: 'relative', zIndex: 1, maxWidth: 1400 }}>
+          <div style={{ position: 'relative', zIndex: 1, maxWidth: 1400 }} className="page-transition">
             <ErrorBoundary>
               <Outlet />
             </ErrorBoundary>

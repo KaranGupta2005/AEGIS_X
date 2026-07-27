@@ -90,7 +90,7 @@ const LiveDemo: React.FC = () => {
       </div>
 
       {/* Main split — Banking App + Console */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12, minHeight: 0 }}>
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12, minHeight: 0 }} className="demo-grid">
         {/* Scenario info banner */}
         <div style={{ gridColumn: '1 / -1', padding: '6px 12px', borderRadius: 8, background: `${SCENARIOS.find(s => s.key === activeScenario)?.color}08`, border: `1px solid ${SCENARIOS.find(s => s.key === activeScenario)?.color}20`, display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 9, color: SCENARIOS.find(s => s.key === activeScenario)?.color, fontFamily: 'Space Grotesk', fontWeight: 600 }}>
@@ -98,18 +98,22 @@ const LiveDemo: React.FC = () => {
           </span>
         </div>
         {/* LEFT: Banking App */}
-        <BankingApp
-          trustScore={trustScore}
-          decision={decision}
-          cognitiveState={cognitiveState}
-          onScreenChange={handleScreenChange}
-        />
+        <div className="banking-app-mobile">
+          <BankingApp
+            trustScore={trustScore}
+            decision={decision}
+            cognitiveState={cognitiveState}
+            onScreenChange={handleScreenChange}
+          />
+        </div>
 
         {/* RIGHT: AEGIS-X Console */}
-        <AegisConsole
-          state={state}
-          currentPage={liveActivity.currentPage}
-        />
+        <div className="aegis-console">
+          <AegisConsole
+            state={state}
+            currentPage={liveActivity.currentPage}
+          />
+        </div>
       </div>
     </div>
   )
