@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import {
   Radio, TrendingDown, Brain, FileWarning, RotateCcw,
   PanelLeftClose, PanelLeftOpen, Shield, LogOut, Settings, HelpCircle,
-  ChevronLeft, ChevronRight, Wifi, WifiOff, CreditCard, Sun, Moon, GitBranch,
+  ChevronLeft, ChevronRight, Wifi, WifiOff, CreditCard, Sun, Moon, GitBranch, Lock,
 } from 'lucide-react'
 import { logout, getUsername } from '../../services/auth'
 import { useStore } from '../../services/store'
@@ -18,6 +18,7 @@ const navItems = [
   { id: 'incident',  label: 'Incident Explorer', icon: FileWarning,  color: 'var(--accent-warn)',   path: '/app/incident'  },
   { id: 'replay',    label: 'Session Replay',    icon: RotateCcw,    color: 'var(--accent-danger)', path: '/app/replay'    },
   { id: 'identity',  label: 'Identity Flow',     icon: GitBranch,    color: 'var(--accent-blue)',   path: '/app/identity'  },
+  { id: 'security',  label: 'Security Ops',      icon: Lock,         color: 'var(--accent-danger)', path: '/app/security'  },
 ]
 
 interface SidebarProps {
