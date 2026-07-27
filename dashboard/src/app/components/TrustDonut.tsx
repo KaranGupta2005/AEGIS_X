@@ -15,7 +15,7 @@ const TrustDonut: React.FC = () => {
     plotOptions: {
       pie: {
         borderWidth: 2,
-        borderColor: '#0A0D14',
+        borderColor: '#ffffff',
         shadow: false,
       }
     },
