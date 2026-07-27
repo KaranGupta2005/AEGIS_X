@@ -40,68 +40,103 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
   }
 
   const handleConfirmPay = async () => {
-    // Capture trust at this exact moment
     const currentTrust = trustScore
     setTrustAtPayment(currentTrust)
 
-    // AEGIS-X CORE IDEA:
-    // Trust > 90% → NO extra verification needed. Behavioral biometrics already
-    //               confirmed identity. Go directly to MPIN. This is the innovation.
-    // Trust 50-90% → Adaptive verification: voice challenge (speak phrase)
-    // Trust < 50%  → Stronger verification: face liveness (blink/smile/turn)
-    // Trust critically low + coercion → HOLD transaction
+    // AEGIS-X Adaptive Verification:
+    // Trust > 95%  → Straight to MPIN (behavioral identity rock-solid)
+    // Trust 70-95% → Quick face direction check (look left/right)
+    // Trust 50-70% → Voice phrase verification
+    // Trust < 50%  → Full face liveness (blink + smile + turn)
 
-    if (currentTrust > 90) {
-      // HIGH TRUST: Behavior matches enrolled user → proceed to MPIN directly
-      // No OTP, no face, no voice. This IS the AEGIS-X value proposition.
+    if (currentTrust > 95) {
       onStepChange('pin')
       return
     }
 
-    // Trust has degraded — something is off. Adaptive verification required.
-    try {
-      const ch = await initiateVerification({
-        user_id: 'demo_user',
-        session_id: 'sess_payment',
-        trust_score: currentTrust / 100,
-        cognitive_state: currentTrust > 70 ? 'focused' : currentTrust > 50 ? 'distressed' : 'panicked',
-        drift_detected: currentTrust < 80,
-        drift_severity: currentTrust < 50 ? 'high' : currentTrust < 70 ? 'medium' : 'low',
-        transaction_amount: Number(amount),
-        reasons: ['Behavioral anomaly detected — verification required'],
-      })
-      setChallenge(ch)
-
-      if (ch.verification_type === 'HOLD_AND_NOTIFY') {
-        onBlock() // Coercion/robotic detected — hold everything
-      } else if (currentTrust < 50) {
-        onStepChange('face_verify') // Serious concern → face liveness
-      } else {
-        onStepChange('voice_verify') // Moderate concern → voice phrase
-      }
-    } catch {
-      // Backend unavailable — for demo, use face verify as fallback
+    if (currentTrust > 70) {
+      // Quick face direction
       setChallenge({
-        challenge_id: 'demo_fallback',
+        challenge_id: `face_quick_${Date.now()}`,
         user_id: 'demo_user',
         session_id: 'sess_payment',
-        verification_type: currentTrust < 50 ? 'FACE_LIVENESS' : 'VOICE_CHALLENGE',
-        risk_source: 'behavioral_drift',
+        verification_type: 'FACE_LIVENESS',
+        risk_source: 'transaction_risk',
         status: 'PENDING',
         trust_before: currentTrust / 100,
         trust_after: 0,
         confidence: 0,
         latency_ms: 0,
-        phrase: 'My voice is my identity',
-        liveness_actions: ['blink', 'turn_left'],
+        phrase: '',
+        liveness_actions: ['turn_left'],
         matched_delegate_id: '',
-        reason: 'Behavioral anomaly',
-        explanation: '',
+        reason: 'Quick identity confirmation',
+        explanation: 'Look in the indicated direction to confirm identity.',
         created_at: new Date().toISOString(),
         completed_at: '',
       } as any)
-      onStepChange(currentTrust < 50 ? 'face_verify' : 'voice_verify')
+      onStepChange('face_verify')
+      return
     }
+
+    if (currentTrust > 50) {
+      // Voice phrase
+      try {
+        const ch = await initiateVerification({
+          user_id: 'demo_user',
+          session_id: 'sess_payment',
+          trust_score: currentTrust / 100,
+          cognitive_state: 'focused',
+          drift_detected: true,
+          drift_severity: 'medium',
+          transaction_amount: Number(amount),
+          reasons: ['Behavioral drift — voice verification required'],
+        })
+        setChallenge(ch)
+      } catch {
+        setChallenge({
+          challenge_id: `voice_${Date.now()}`,
+          user_id: 'demo_user', session_id: 'sess_payment',
+          verification_type: 'VOICE_CHALLENGE', risk_source: 'behavioral_drift',
+          status: 'PENDING', trust_before: currentTrust / 100, trust_after: 0,
+          confidence: 0, latency_ms: 0,
+          phrase: 'My voice is my identity',
+          liveness_actions: [], matched_delegate_id: '',
+          reason: 'Voice verification required', explanation: '',
+          created_at: new Date().toISOString(), completed_at: '',
+        } as any)
+      }
+      onStepChange('voice_verify')
+      return
+    }
+
+    // Trust < 50% → Full face liveness
+    try {
+      const ch = await initiateVerification({
+        user_id: 'demo_user',
+        session_id: 'sess_payment',
+        trust_score: currentTrust / 100,
+        cognitive_state: 'distressed',
+        drift_detected: true,
+        drift_severity: 'high',
+        transaction_amount: Number(amount),
+        reasons: ['Critical behavioral anomaly — full liveness required'],
+      })
+      setChallenge(ch)
+      if (ch.verification_type === 'HOLD_AND_NOTIFY') { onBlock(); return }
+    } catch {
+      setChallenge({
+        challenge_id: `face_full_${Date.now()}`,
+        user_id: 'demo_user', session_id: 'sess_payment',
+        verification_type: 'FACE_LIVENESS', risk_source: 'behavioral_drift',
+        status: 'PENDING', trust_before: currentTrust / 100, trust_after: 0,
+        confidence: 0, latency_ms: 0, phrase: '',
+        liveness_actions: ['blink', 'smile', 'turn_left'],
+        matched_delegate_id: '', reason: 'Full liveness required', explanation: '',
+        created_at: new Date().toISOString(), completed_at: '',
+      } as any)
+    }
+    onStepChange('face_verify')
   }
 
   const handleVoiceVerifyComplete = async () => {
