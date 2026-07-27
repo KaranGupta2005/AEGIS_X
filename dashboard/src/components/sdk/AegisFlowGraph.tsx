@@ -99,14 +99,14 @@ export const AegisFlowGraph: React.FC<AegisFlowGraphProps> = ({
   sdkState, currentScreen, eventCount, trustScore, decision,
 }) => {
   // Determine which nodes are active/completed based on current state
-  const isOnboarding = currentScreen === 'onboarding' || currentScreen === 'launch'
+  const isOnboarding = eventCount < 3
   const isObserving = sdkState === 'OBSERVING' || sdkState === 'LEARNING'
   const isTransaction = sdkState === 'TRANSACTION'
   const isVerifying = sdkState === 'VERIFYING'
-  const hasFaceEnrolled = eventCount > 2
-  const hasVoiceEnrolled = eventCount > 4
-  const hasMPIN = eventCount > 6
-  const hasDelegate = eventCount > 8
+  const hasFaceEnrolled = eventCount >= 1
+  const hasVoiceEnrolled = eventCount >= 2
+  const hasMPIN = eventCount >= 3
+  const hasDelegate = eventCount >= 4
 
   const nodes: Node[] = useMemo(() => [
     // Row 1: Enrollment

@@ -168,18 +168,35 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
     setVerifying(true)
     setVerificationResult('Scanning face...')
 
-    // Quick animated verification (1.5s) — visually impressive
-    await new Promise(r => setTimeout(r, 800))
+    // Capture a real frame from camera for validation
+    let frameBase64 = 'demo_frame_placeholder'
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 240 } })
+      const video = document.createElement('video')
+      video.srcObject = stream
+      video.muted = true
+      await video.play()
+      await new Promise(r => setTimeout(r, 500))
+      const canvas = document.createElement('canvas')
+      canvas.width = 320; canvas.height = 240
+      canvas.getContext('2d')!.drawImage(video, 0, 0, 320, 240)
+      frameBase64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1]
+      stream.getTracks().forEach(t => t.stop())
+    } catch {
+      // Camera unavailable — use placeholder
+    }
+
+    await new Promise(r => setTimeout(r, 300))
     setVerificationResult('Analyzing direction...')
     await new Promise(r => setTimeout(r, 700))
 
-    // Send validation to backend (non-blocking for demo speed)
+    // Send real frame to backend validation (non-blocking for demo speed)
     try {
       const BACKEND = import.meta.env.VITE_BACKEND_URL || ''
       fetch(`${BACKEND}/api/v1/verify/validate/face`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_base64: 'demo_frame', required_action: challenge.liveness_actions?.[0] || 'turn_left' }),
+        body: JSON.stringify({ image_base64: frameBase64, required_action: challenge.liveness_actions?.[0] || 'turn_left' }),
       }).catch(() => {})
     } catch {}
 

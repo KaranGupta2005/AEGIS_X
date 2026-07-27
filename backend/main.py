@@ -87,6 +87,20 @@ async def lifespan(app: FastAPI):
     processor = EventProcessor()
     set_processor(processor)
     print("[AEGIS-X] Trust engine ready.")
+
+    # Log provider status at startup
+    from backend.api.verification_routes import get_engine
+    try:
+        engine = get_engine()
+        status = engine.get_providers_status()
+        print("[AEGIS-X] ═══ Provider Status ═══")
+        for name, provider in status.items():
+            symbol = "✓" if provider else "✗"
+            print(f"[AEGIS-X]   {symbol} {name}: {provider or 'MOCK (fallback)'}")
+        print("[AEGIS-X] ══════════════════════")
+    except Exception:
+        print("[AEGIS-X] Provider status check skipped.")
+
     # Start keep-alive background task
     task = asyncio.create_task(keep_alive())
     yield
