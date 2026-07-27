@@ -40,72 +40,68 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
   }
 
   const handleConfirmPay = async () => {
-    // Capture trust at this exact moment — don't let live updates change the decision
+    // Capture trust at this exact moment
     const currentTrust = trustScore
     setTrustAtPayment(currentTrust)
 
-    // AEGIS-X Adaptive Verification Flow:
-    // Trust > 85%  → Direct to MPIN (frictionless)
-    // Trust 50-85% → Voice Challenge first, then MPIN
-    // Trust < 50%  → Face Liveness first, then MPIN
-    // BLOCK only happens if verification FAILS — never preemptively
+    // AEGIS-X CORE IDEA:
+    // Trust > 90% → NO extra verification needed. Behavioral biometrics already
+    //               confirmed identity. Go directly to MPIN. This is the innovation.
+    // Trust 50-90% → Adaptive verification: voice challenge (speak phrase)
+    // Trust < 50%  → Stronger verification: face liveness (blink/smile/turn)
+    // Trust critically low + coercion → HOLD transaction
 
-    if (currentTrust < 50) {
-      // Face Liveness required
-      try {
-        const ch = await initiateVerification({
-          user_id: 'demo_user',
-          session_id: 'sess_payment',
-          trust_score: currentTrust / 100,
-          cognitive_state: 'distressed',
-          drift_detected: true,
-          drift_severity: 'high',
-          transaction_amount: Number(amount),
-          reasons: ['Low trust during payment'],
-        })
-        setChallenge(ch)
-        if (ch.verification_type === 'HOLD_AND_NOTIFY') {
-          onBlock() // Only HOLD blocks — this is for coercion/robotic
-        } else {
-          onStepChange('face_verify')
-        }
-      } catch {
-        // Backend unavailable — proceed to MPIN (fail-open for demo)
-        onStepChange('pin')
-      }
+    if (currentTrust > 90) {
+      // HIGH TRUST: Behavior matches enrolled user → proceed to MPIN directly
+      // No OTP, no face, no voice. This IS the AEGIS-X value proposition.
+      onStepChange('pin')
       return
     }
 
-    if (currentTrust < 85) {
-      // Voice Challenge required
-      try {
-        const ch = await initiateVerification({
-          user_id: 'demo_user',
-          session_id: 'sess_payment',
-          trust_score: currentTrust / 100,
-          cognitive_state: 'focused',
-          drift_detected: false,
-          transaction_amount: Number(amount),
-          reasons: ['Elevated risk during payment'],
-        })
-        setChallenge(ch)
-        if (ch.verification_type === 'VOICE_CHALLENGE') {
-          onStepChange('voice_verify')
-        } else if (ch.verification_type === 'FACE_LIVENESS') {
-          onStepChange('face_verify')
-        } else {
-          // PASSIVE_OBSERVE or NONE → proceed to MPIN
-          onStepChange('pin')
-        }
-      } catch {
-        // Backend unavailable — proceed to MPIN
-        onStepChange('pin')
-      }
-      return
-    }
+    // Trust has degraded — something is off. Adaptive verification required.
+    try {
+      const ch = await initiateVerification({
+        user_id: 'demo_user',
+        session_id: 'sess_payment',
+        trust_score: currentTrust / 100,
+        cognitive_state: currentTrust > 70 ? 'focused' : currentTrust > 50 ? 'distressed' : 'panicked',
+        drift_detected: currentTrust < 80,
+        drift_severity: currentTrust < 50 ? 'high' : currentTrust < 70 ? 'medium' : 'low',
+        transaction_amount: Number(amount),
+        reasons: ['Behavioral anomaly detected — verification required'],
+      })
+      setChallenge(ch)
 
-    // Trust > 85% → MPIN directly (no extra verification)
-    onStepChange('pin')
+      if (ch.verification_type === 'HOLD_AND_NOTIFY') {
+        onBlock() // Coercion/robotic detected — hold everything
+      } else if (currentTrust < 50) {
+        onStepChange('face_verify') // Serious concern → face liveness
+      } else {
+        onStepChange('voice_verify') // Moderate concern → voice phrase
+      }
+    } catch {
+      // Backend unavailable — for demo, use face verify as fallback
+      setChallenge({
+        challenge_id: 'demo_fallback',
+        user_id: 'demo_user',
+        session_id: 'sess_payment',
+        verification_type: currentTrust < 50 ? 'FACE_LIVENESS' : 'VOICE_CHALLENGE',
+        risk_source: 'behavioral_drift',
+        status: 'PENDING',
+        trust_before: currentTrust / 100,
+        trust_after: 0,
+        confidence: 0,
+        latency_ms: 0,
+        phrase: 'My voice is my identity',
+        liveness_actions: ['blink', 'turn_left'],
+        matched_delegate_id: '',
+        reason: 'Behavioral anomaly',
+        explanation: '',
+        created_at: new Date().toISOString(),
+        completed_at: '',
+      } as any)
+      onStepChange(currentTrust < 50 ? 'face_verify' : 'voice_verify')
+    }
   }
 
   const handleVoiceVerifyComplete = async () => {
@@ -505,7 +501,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
                   <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'Space Grotesk' }}>Sent to {selectedContact.name}</div>
                   <div style={{ marginTop: 10, padding: '6px 12px', borderRadius: 20, background: 'rgba(16,185,129,0.08)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                     <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#10B981' }} />
-                    <span style={{ fontSize: 8, color: '#10B981', fontFamily: 'JetBrains Mono' }}>AEGIS-X Verified · No OTP Needed</span>
+                    <span style={{ fontSize: 8, color: '#10B981', fontFamily: 'JetBrains Mono' }}>AEGIS-X Verified · Behavioral Identity Confirmed</span>
                   </div>
                 </div>
               </motion.div>
