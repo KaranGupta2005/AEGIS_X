@@ -455,12 +455,21 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
           {currentStep === 'face_verify' && (
             <motion.div key="face_verify" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
               style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-              <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-                <Camera size={24} color="#EF4444" />
+              <motion.div
+                animate={verifying ? { rotate: 360 } : {}}
+                transition={verifying ? { duration: 2, repeat: Infinity, ease: 'linear' } : {}}
+                style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(239,68,68,0.08)', border: `2px solid ${verifying ? '#10B981' : '#EF4444'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, position: 'relative' }}
+              >
+                <Camera size={24} color={verifying ? '#10B981' : '#EF4444'} />
+                {verifying && (
+                  <motion.div animate={{ rotate: -360 }} transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }} style={{ position: 'absolute', inset: -4, border: '2px solid transparent', borderTopColor: '#10B981', borderRadius: '50%' }} />
+                )}
+              </motion.div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: verifying ? '#10B981' : '#EF4444', fontFamily: 'Space Grotesk', marginBottom: 6 }}>
+                {verifying ? 'Verifying Identity...' : 'Face Liveness Check'}
               </div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#EF4444', fontFamily: 'Space Grotesk', marginBottom: 6 }}>Face Liveness Check</div>
               <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 1.6, marginBottom: 12, fontFamily: 'Space Grotesk' }}>
-                Critical risk detected. Complete face verification to proceed with this transaction.
+                {verifying ? 'Analyzing face direction and liveness...' : 'Complete face verification to proceed with this transaction.'}
               </p>
               {challenge?.liveness_actions && challenge.liveness_actions.length > 0 && (
                 <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>

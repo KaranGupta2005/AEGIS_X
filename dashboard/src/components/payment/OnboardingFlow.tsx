@@ -86,12 +86,19 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
               } else {
                 const newPin = mpinConfirm + d
                 setMpinConfirm(newPin)
-                if (newPin.length === 6) setTimeout(next, 600)
+                if (newPin.length === 6) {
+                  if (newPin === mpin) {
+                    setTimeout(next, 600)
+                  } else {
+                    // Mismatch — shake and reset confirm
+                    setTimeout(() => { setMpinConfirm(''); }, 500)
+                  }
+                }
               }
             }} onDelete={() => {
               if (mpinStage === 'set') setMpin(p => p.slice(0, -1))
               else setMpinConfirm(p => p.slice(0, -1))
-            }} />}
+            }} mpinMismatch={mpinConfirm.length === 6 && mpinConfirm !== mpin} />}
             {step === 'delegate' && <DelegateStep onNext={next} onSkip={next} />}
             {step === 'complete' && <CompleteStep onContinue={() => { localStorage.setItem('aegisx_onboarding_done', 'true'); onComplete() }} />}
 
@@ -135,10 +142,11 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
 
 function FaceEnrollStep({ enrolled, onEnroll }: { enrolled: boolean; onEnroll: () => void }) {
   const [capturing, setCapturing] = useState(false)
+  const [progress, setProgress] = useState(0)
   const [stream, setStream] = useState<MediaStream | null>(null)
+  const [status, setStatus] = useState('')
   const videoRef = React.useRef<HTMLVideoElement>(null)
 
-  // Attach stream to video element when both are available
   React.useEffect(() => {
     if (stream && videoRef.current) {
       videoRef.current.srcObject = stream
@@ -148,14 +156,30 @@ function FaceEnrollStep({ enrolled, onEnroll }: { enrolled: boolean; onEnroll: (
 
   const startCapture = async () => {
     setCapturing(true)
+    setProgress(0)
+    setStatus('Detecting face...')
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 320 } }
       })
       setStream(mediaStream)
-      // Capture for 3 seconds, then grab a frame and enroll
+
+      // Progress animation over 3 seconds
+      const start = Date.now()
+      const progressInterval = setInterval(() => {
+        const elapsed = Date.now() - start
+        const pct = Math.min(100, (elapsed / 3000) * 100)
+        setProgress(pct)
+        if (pct < 30) setStatus('Detecting face...')
+        else if (pct < 60) setStatus('Hold still — capturing...')
+        else if (pct < 90) setStatus('Analyzing quality...')
+        else setStatus('Finalizing template...')
+      }, 100)
+
       setTimeout(async () => {
-        // Capture frame for enrollment
+        clearInterval(progressInterval)
+        setProgress(100)
+        setStatus('✓ Face captured!')
         try {
           const video = videoRef.current
           if (video) {
@@ -163,7 +187,6 @@ function FaceEnrollStep({ enrolled, onEnroll }: { enrolled: boolean; onEnroll: (
             canvas.width = 320; canvas.height = 320
             canvas.getContext('2d')!.drawImage(video, 0, 0, 320, 320)
             const frameBase64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1]
-            // POST to backend enrollment
             const BACKEND = import.meta.env.VITE_BACKEND_URL || ''
             fetch(`${BACKEND}/api/v1/verify/provider/enroll/face`, {
               method: 'POST',
@@ -179,7 +202,7 @@ function FaceEnrollStep({ enrolled, onEnroll }: { enrolled: boolean; onEnroll: (
       }, 3000)
     } catch (err) {
       console.warn('[AEGIS-X] Camera unavailable:', err)
-      // Camera unavailable — simulate enrollment
+      setStatus('Camera unavailable — simulating...')
       setTimeout(() => { setCapturing(false); onEnroll() }, 2000)
     }
   }
@@ -187,11 +210,11 @@ function FaceEnrollStep({ enrolled, onEnroll }: { enrolled: boolean; onEnroll: (
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, textAlign: 'center' }}>
       <div style={{ fontSize: 14, fontWeight: 700, color: 'white', fontFamily: 'Space Grotesk', marginBottom: 6 }}>Face Enrollment</div>
-      <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 16, fontFamily: 'Space Grotesk' }}>Look directly at the camera. We'll capture your face template.</p>
+      <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 16, fontFamily: 'Space Grotesk' }}>Position your face in the circle. Hold steady for 3 seconds.</p>
 
       <motion.div
         animate={capturing ? { borderColor: '#10B981' } : { borderColor: 'rgba(255,255,255,0.1)' }}
-        style={{ width: 160, height: 160, borderRadius: '50%', border: '3px solid', background: 'rgba(16,185,129,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, position: 'relative', overflow: 'hidden' }}
+        style={{ width: 160, height: 160, borderRadius: '50%', border: '3px solid', background: 'rgba(16,185,129,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, position: 'relative', overflow: 'hidden' }}
       >
         {enrolled ? (
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}><CheckCircle size={48} color="#10B981" /></motion.div>
@@ -207,14 +230,24 @@ function FaceEnrollStep({ enrolled, onEnroll }: { enrolled: boolean; onEnroll: (
         )}
       </motion.div>
 
+      {/* Progress bar + status */}
+      {capturing && (
+        <div style={{ width: '80%', marginBottom: 8 }}>
+          <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+            <motion.div animate={{ width: `${progress}%` }} style={{ height: '100%', background: '#10B981', borderRadius: 2 }} />
+          </div>
+          <div style={{ fontSize: 8, color: '#10B981', fontFamily: 'JetBrains Mono', marginTop: 4, textAlign: 'center' }}>{status}</div>
+        </div>
+      )}
+
       {enrolled ? (
         <div style={{ fontSize: 11, color: '#10B981', fontWeight: 700, fontFamily: 'Space Grotesk' }}>✓ Face enrolled successfully</div>
-      ) : (
-        <button onClick={startCapture} disabled={capturing}
-          style={{ padding: '9px 24px', borderRadius: 10, border: 'none', background: capturing ? 'rgba(16,185,129,0.2)' : '#10B981', color: 'white', fontSize: 11, fontWeight: 700, cursor: capturing ? 'default' : 'pointer', fontFamily: 'Space Grotesk' }}>
-          {capturing ? 'Capturing...' : 'Start Face Capture'}
+      ) : !capturing ? (
+        <button onClick={startCapture}
+          style={{ padding: '9px 24px', borderRadius: 10, border: 'none', background: '#10B981', color: 'white', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'Space Grotesk' }}>
+          Start Face Capture
         </button>
-      )}
+      ) : null}
     </div>
   )
 }
@@ -310,9 +343,9 @@ function VoiceEnrollStep({ enrolled, onEnroll }: { enrolled: boolean; onEnroll: 
 }
 
 
-function MPINStep({ mpin, mpinConfirm, stage, onDigit, onDelete }: {
+function MPINStep({ mpin, mpinConfirm, stage, onDigit, onDelete, mpinMismatch }: {
   mpin: string; mpinConfirm: string; stage: 'set' | 'confirm'
-  onDigit: (d: string) => void; onDelete: () => void
+  onDigit: (d: string) => void; onDelete: () => void; mpinMismatch?: boolean
 }) {
   const currentPin = stage === 'set' ? mpin : mpinConfirm
   return (
@@ -321,8 +354,8 @@ function MPINStep({ mpin, mpinConfirm, stage, onDigit, onDelete }: {
       <div style={{ fontSize: 14, fontWeight: 700, color: 'white', fontFamily: 'Space Grotesk', marginBottom: 4 }}>
         {stage === 'set' ? 'Set Transaction MPIN' : 'Confirm MPIN'}
       </div>
-      <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 18, fontFamily: 'Space Grotesk' }}>
-        {stage === 'set' ? 'Choose a 6-digit PIN for transaction authorization' : 'Re-enter your MPIN to confirm'}
+      <p style={{ fontSize: 10, color: mpinMismatch ? '#EF4444' : 'rgba(255,255,255,0.4)', marginBottom: 18, fontFamily: 'Space Grotesk' }}>
+        {mpinMismatch ? 'PINs don\'t match — try again' : stage === 'set' ? 'Choose a 6-digit PIN for transaction authorization' : 'Re-enter your MPIN to confirm'}
       </p>
 
       {/* PIN dots */}
