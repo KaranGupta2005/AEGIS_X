@@ -44,7 +44,7 @@ CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "AEGISX_CORS_ORIGINS",
-        "http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,https://aegisx-2026.web.app,https://aegisx-2026.firebaseapp.com,https://aegisx-backend-t1v7.onrender.com"
+        "http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,https://aegisx-2026.web.app,https://aegisx-2026.firebaseapp.com,https://aegisx-backend-92ir.onrender.com"
     ).split(",")
     if origin.strip()
 ]
