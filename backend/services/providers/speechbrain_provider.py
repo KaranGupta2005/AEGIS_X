@@ -68,8 +68,23 @@ def _load_speechbrain():
         print("[AEGIS-X] SpeechBrain ECAPA-TDNN loaded successfully.")
         return _classifier
     except ImportError as e:
+        # SpeechBrain not installed locally — check if AI service is available
+        import os
+        ai_url = os.getenv("AEGISX_AI_SERVICE_URL", "")
+        if ai_url:
+            print(f"[AEGIS-X] SpeechBrain not local — will proxy to AI service: {ai_url}")
+            _speechbrain_loaded = True  # Mark as "loaded" (via proxy)
+            _classifier = "PROXY"
+            return _classifier
         raise RuntimeError(f"SpeechBrain not installed: {e}")
     except Exception as e:
+        import os
+        ai_url = os.getenv("AEGISX_AI_SERVICE_URL", "")
+        if ai_url:
+            print(f"[AEGIS-X] SpeechBrain load failed — will proxy to AI service: {ai_url}")
+            _speechbrain_loaded = True
+            _classifier = "PROXY"
+            return _classifier
         raise RuntimeError(f"Failed to load SpeechBrain model: {e}")
 
 
@@ -325,6 +340,32 @@ class SpeechBrainVoiceProvider(IVoiceVerificationProvider):
         except Exception as e:
             processing_ms = (time.perf_counter() - t_start) * 1000
             print(f"[AEGIS-X VOICE ERROR] verify_speaker exception: {type(e).__name__}: {e}")
+            
+            # Try AI service proxy as fallback
+            import os
+            ai_url = os.getenv("AEGISX_AI_SERVICE_URL", "")
+            if ai_url:
+                try:
+                    import httpx
+                    import base64
+                    resp = httpx.post(
+                        f"{ai_url}/voice/verify",
+                        json={"audio_base64": base64.b64encode(audio_data).decode(), "user_id": "demo_user"},
+                        timeout=10.0,
+                    )
+                    data = resp.json()
+                    return VerificationResult(
+                        verified=data.get("match", False),
+                        confidence=data.get("confidence", 0.0),
+                        latency_ms=data.get("latency_ms", processing_ms),
+                        quality=0.8, processing_time_ms=processing_ms,
+                        reason=data.get("reason", "AI service proxy"),
+                        status=ResultStatus.SUCCESS if data.get("match") else ResultStatus.FAILED,
+                        timestamp=now, provider_name="speechbrain_ecapa_tdnn_proxy",
+                    )
+                except Exception as proxy_err:
+                    print(f"[AEGIS-X VOICE] AI proxy also failed: {proxy_err}")
+            
             return VerificationResult(
                 verified=False, confidence=0.0, latency_ms=processing_ms,
                 quality=0.0, processing_time_ms=processing_ms,
