@@ -56,7 +56,7 @@ def _load_insightface():
         return _insightface_app
     except ImportError as e:
         import os
-        face_url = os.getenv("AEGISX_FACE_SERVICE_URL", "")
+        face_url = os.getenv("AEGISX_AI_SERVICE_URL", "")
         if face_url:
             print(f"[AEGIS-X] InsightFace not local — will proxy to face service: {face_url}")
             _insightface_loaded = True
@@ -65,7 +65,7 @@ def _load_insightface():
         raise RuntimeError(f"InsightFace not installed: {e}")
     except Exception as e:
         import os
-        face_url = os.getenv("AEGISX_FACE_SERVICE_URL", "")
+        face_url = os.getenv("AEGISX_AI_SERVICE_URL", "")
         if face_url:
             print(f"[AEGIS-X] InsightFace load failed — will proxy to face service: {face_url}")
             _insightface_loaded = True
@@ -236,7 +236,7 @@ class InsightFaceVerificationProvider(IFaceVerificationProvider):
             processing_ms = (time.perf_counter() - t_start) * 1000
             # Try face service proxy as fallback
             import os
-            face_url = os.getenv("AEGISX_FACE_SERVICE_URL", "")
+            face_url = os.getenv("AEGISX_AI_SERVICE_URL", "")
             if face_url:
                 try:
                     import httpx
