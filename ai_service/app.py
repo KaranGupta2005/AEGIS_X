@@ -137,6 +137,29 @@ def health_detail():
     }
 
 
+# ─── KEEP ALIVE (prevent Render sleep) ──────────────────────────────────────
+
+import asyncio
+import httpx as _httpx
+
+async def _keep_alive():
+    """Self-ping every 10 minutes to prevent Render free tier sleep."""
+    url = os.environ.get("RENDER_EXTERNAL_URL", "")
+    if not url:
+        return
+    async with _httpx.AsyncClient() as client:
+        while True:
+            try:
+                await client.get(f"{url}/")
+            except:
+                pass
+            await asyncio.sleep(600)
+
+@app.on_event("startup")
+async def startup():
+    asyncio.create_task(_keep_alive())
+
+
 @app.post("/voice/verify")
 def verify_voice(req: VoiceVerifyRequest):
     """Verify speaker identity from audio."""

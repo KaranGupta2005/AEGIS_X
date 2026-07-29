@@ -223,7 +223,7 @@ export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, co
 
       {/* SANDBOX CONTAINMENT OVERLAY — Shown when honeypot/containment activates OR trust critically low */}
       <AnimatePresence>
-        {(sandboxActive || trustScore <= 50) && (
+        {(sandboxActive || trustScore <= 50 || decision === 'BLOCK') && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
