@@ -13,13 +13,13 @@ interface BaseScreenProps { onBack: () => void; onSuccess?: () => void; trustSco
 const pageWrap: React.CSSProperties = { height: '100%', display: 'flex', flexDirection: 'column' }
 
 const header = (onBack: () => void, title: string, sub?: string): React.ReactNode => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
-    <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '5px', cursor: 'pointer', color: 'rgba(255,255,255,0.6)', display: 'flex' }}>
+  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--border-light)', flexShrink: 0 }}>
+    <button onClick={onBack} style={{ background: 'var(--accent-dim)', border: '1px solid var(--border-light)', borderRadius: 8, padding: '5px', cursor: 'pointer', color: '#93b4e4', display: 'flex' }}>
       <ArrowLeft size={13} />
     </button>
     <div>
-      <div style={{ fontSize: 13, fontWeight: 700, color: 'white', fontFamily: 'Space Grotesk' }}>{title}</div>
-      {sub && <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono' }}>{sub}</div>}
+      <div style={{ fontSize: 13, fontWeight: 700, color: '#e8f0fe', fontFamily: 'Space Grotesk' }}>{title}</div>
+      {sub && <div style={{ fontSize: 8, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>{sub}</div>}
     </div>
   </div>
 )
@@ -30,7 +30,7 @@ function InputField({ label, value, onChange, placeholder, type = 'text', suffix
 }) {
   return (
     <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{label}</div>
+      <div style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{label}</div>
       <div style={{ position: 'relative' }}>
         <input
           type={type} value={value} onChange={e => onChange(e.target.value)}
@@ -38,12 +38,12 @@ function InputField({ label, value, onChange, placeholder, type = 'text', suffix
           style={{
             width: '100%', boxSizing: 'border-box',
             height: 42, padding: suffix ? '0 50px 0 12px' : '0 12px',
-            borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)',
-            background: 'rgba(255,255,255,0.03)', color: 'white',
+            borderRadius: 10, border: '1px solid var(--border-light)',
+            background: 'var(--accent-dim)', color: '#e8f0fe',
             fontSize: 13, fontFamily: 'Space Grotesk', outline: 'none',
           }}
         />
-        {suffix && <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono' }}>{suffix}</span>}
+        {suffix && <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>{suffix}</span>}
       </div>
     </div>
   )
@@ -59,8 +59,8 @@ function SuccessCard({ amount, label, sub, onBack }: { amount?: string; label: s
       </motion.div>
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
         <div style={{ fontSize: 18, fontWeight: 800, color: '#10B981', fontFamily: 'Space Grotesk', marginTop: 16 }}>{label}</div>
-        {amount && <div style={{ fontSize: 26, fontWeight: 900, color: 'white', fontFamily: 'Space Grotesk', margin: '6px 0' }}>{amount}</div>}
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'Space Grotesk' }}>{sub}</div>
+        {amount && <div style={{ fontSize: 26, fontWeight: 900, color: '#e8f0fe', fontFamily: 'Space Grotesk', margin: '6px 0' }}>{amount}</div>}
+        <div style={{ fontSize: 11, color: '#5b8cc7', fontFamily: 'Space Grotesk' }}>{sub}</div>
         <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 20, background: 'rgba(16,185,129,0.08)' }}>
           <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#10B981' }} />
           <span style={{ fontSize: 8, color: '#10B981', fontFamily: 'JetBrains Mono' }}>AEGIS-X Verified</span>
@@ -68,7 +68,7 @@ function SuccessCard({ amount, label, sub, onBack }: { amount?: string; label: s
       </motion.div>
       <motion.button whileTap={{ scale: 0.97 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
         onClick={onBack}
-        style={{ marginTop: 22, padding: '10px 24px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.6)', fontSize: 11, cursor: 'pointer', fontFamily: 'Space Grotesk' }}>
+        style={{ marginTop: 22, padding: '10px 24px', borderRadius: 10, border: '1px solid var(--border-medium)', background: 'var(--accent-dim)', color: '#93b4e4', fontSize: 11, cursor: 'pointer', fontFamily: 'Space Grotesk' }}>
         Back to Home
       </motion.button>
     </motion.div>
@@ -129,7 +129,7 @@ export const QRScanScreen: React.FC<BaseScreenProps> = ({ onBack, trustScore }) 
             <QrCode size={64} color="rgba(255,255,255,0.08)" />
           </div>
         </div>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'Space Grotesk', textAlign: 'center' }}>Scanning for QR codes...</div>
+        <div style={{ fontSize: 11, color: '#5b8cc7', fontFamily: 'Space Grotesk', textAlign: 'center' }}>Scanning for QR codes...</div>
         {/* Demo: simulate scan after click */}
         <motion.button whileTap={{ scale: 0.96 }} onClick={() => setDone(true)}
           style={{ padding: '10px 24px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.25)', background: 'rgba(16,185,129,0.06)', color: '#10B981', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'Space Grotesk' }}>

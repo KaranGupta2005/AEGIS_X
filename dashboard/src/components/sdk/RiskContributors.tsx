@@ -31,12 +31,12 @@ export const RiskContributors: React.FC<RiskContributorsProps> = ({
         return (
           <div key={s.label}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontFamily: 'JetBrains Mono' }}>{s.label}</span>
+              <span style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>{s.label}</span>
               <span style={{ fontSize: 10, fontWeight: 700, color: barColor, fontFamily: 'Space Grotesk' }}>
                 {s.value}%
               </span>
             </div>
-            <div style={{ height: 3, background: 'rgba(255,255,255,0.05)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{ height: 3, background: 'var(--accent-dim)', borderRadius: 99, overflow: 'hidden' }}>
               <motion.div
                 animate={{ width: `${s.value}%` }}
                 transition={{ duration: 0.5, ease: 'easeOut' }}

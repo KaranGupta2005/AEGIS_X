@@ -1,21 +1,20 @@
 """
-Generates synthetic labeled data for training the Random Forest cognitive
-state classifier (100 estimators, as specified in Section 6.c).
+AEGIS-X Cognitive State Dataset Generator
+==========================================
+Generates 5000 synthetic labeled samples (balanced across 6 classes) for training
+the Random Forest cognitive state classifier.
 
-Each state has distinct behavioral signatures mapped from the 16-dim feature space.
-We extract the 8 features most relevant to cognitive assessment:
+States: calm, focused, distressed, panicked, coerced, robotic
 
-    1. hesitation_ratio         — fraction of time idle (strongest coercion signal)
-    2. correction_rate          — backspace/undo frequency (panic indicator)
-    3. typing_speed_cps         — chars per second (stress slows typing)
-    4. typing_rhythm_variance   — inter-key timing irregularity (stress → erratic)
-    5. touch_duration_mean      — finger hold time (freezing under pressure)
-    6. gyroscope_variance       — device shake (physical stress response)
-    7. interaction_intensity    — taps per 2s window (engagement level)
-    8. swipe_straightness       — path linearity (impaired motor control → curved)
-
-These 8 features are the cognitive subset of the full 16-dim vector.
-The Random Forest learns the non-linear boundaries between states.
+Features (8):
+    1. hesitation_ratio         (0-1)     — fraction of time spent idle
+    2. correction_rate          (0-1)     — backspace/undo rate per character
+    3. typing_speed_cps         (0.5-12)  — characters per second
+    4. typing_rhythm_variance   (0.1-350) — inter-key timing variance in ms
+    5. touch_duration_mean      (20-600)  — finger-on-screen time in ms
+    6. gyroscope_variance       (0-0.15)  — device shake/movement
+    7. interaction_intensity    (0-50)    — total events per 2-second window
+    8. swipe_straightness       (0.2-1.0) — linearity of swipe paths
 """
 
 import numpy as np
@@ -26,186 +25,250 @@ np.random.seed(42)
 
 OUTPUT_DIR = Path(__file__).parent.parent / "data" / "synthetic"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+OUTPUT_FILE = OUTPUT_DIR / "cognitive_training_data.csv"
 
-# Samples per cognitive state
-N_PER_STATE = 2000
+TOTAL_SAMPLES = 5000
+N_STATES = 6
+N_PER_STATE = TOTAL_SAMPLES // N_STATES  # 833 per state, remainder goes to edge cases
+
+FEATURE_NAMES = [
+    "hesitation_ratio",
+    "correction_rate",
+    "typing_speed_cps",
+    "typing_rhythm_variance",
+    "touch_duration_mean",
+    "gyroscope_variance",
+    "interaction_intensity",
+    "swipe_straightness",
+]
+
+# Global feature bounds for clamping
+FEATURE_BOUNDS = {
+    "hesitation_ratio": (0.0, 1.0),
+    "correction_rate": (0.0, 1.0),
+    "typing_speed_cps": (0.5, 12.0),
+    "typing_rhythm_variance": (0.1, 350.0),
+    "touch_duration_mean": (20.0, 600.0),
+    "gyroscope_variance": (0.0, 0.15),
+    "interaction_intensity": (0.0, 50.0),
+    "swipe_straightness": (0.2, 1.0),
+}
+
+# State-specific ranges: (min, max) for each feature
+STATE_RANGES = {
+    "calm": {
+        "hesitation_ratio": (0.05, 0.15),
+        "correction_rate": (0.02, 0.08),
+        "typing_speed_cps": (2.5, 5.0),
+        "typing_rhythm_variance": (20.0, 60.0),
+        "touch_duration_mean": (80.0, 160.0),
+        "gyroscope_variance": (0.008, 0.025),
+        "interaction_intensity": (5.0, 12.0),
+        "swipe_straightness": (0.75, 0.92),
+    },
+    "focused": {
+        "hesitation_ratio": (0.02, 0.10),
+        "correction_rate": (0.01, 0.05),
+        "typing_speed_cps": (3.5, 6.0),
+        "typing_rhythm_variance": (15.0, 45.0),
+        "touch_duration_mean": (60.0, 130.0),
+        "gyroscope_variance": (0.005, 0.018),
+        "interaction_intensity": (8.0, 18.0),
+        "swipe_straightness": (0.80, 0.95),
+    },
+    "distressed": {
+        "hesitation_ratio": (0.20, 0.45),
+        "correction_rate": (0.10, 0.25),
+        "typing_speed_cps": (1.5, 3.5),
+        "typing_rhythm_variance": (50.0, 150.0),
+        "touch_duration_mean": (130.0, 250.0),
+        "gyroscope_variance": (0.020, 0.050),
+        "interaction_intensity": (3.0, 8.0),
+        "swipe_straightness": (0.60, 0.80),
+    },
+    "panicked": {
+        "hesitation_ratio": (0.40, 0.75),
+        "correction_rate": (0.20, 0.50),
+        "typing_speed_cps": (0.5, 2.0),
+        "typing_rhythm_variance": (100.0, 300.0),
+        "touch_duration_mean": (200.0, 450.0),
+        "gyroscope_variance": (0.040, 0.090),
+        "interaction_intensity": (1.0, 5.0),
+        "swipe_straightness": (0.40, 0.70),
+    },
+    "coerced": {
+        "hesitation_ratio": (0.50, 0.85),
+        "correction_rate": (0.25, 0.60),
+        "typing_speed_cps": (0.3, 1.5),
+        "typing_rhythm_variance": (150.0, 350.0),
+        "touch_duration_mean": (250.0, 550.0),
+        "gyroscope_variance": (0.050, 0.120),
+        "interaction_intensity": (1.0, 3.0),
+        "swipe_straightness": (0.30, 0.65),
+    },
+    "robotic": {
+        "hesitation_ratio": (0.00, 0.03),
+        "correction_rate": (0.00, 0.02),
+        "typing_speed_cps": (7.0, 12.0),
+        "typing_rhythm_variance": (0.5, 5.0),
+        "touch_duration_mean": (30.0, 60.0),
+        "gyroscope_variance": (0.000, 0.003),
+        "interaction_intensity": (15.0, 45.0),
+        "swipe_straightness": (0.95, 1.00),
+    },
+}
 
 
-def generate_calm(n: int) -> pd.DataFrame:
+def generate_samples_for_state(state: str, n: int) -> pd.DataFrame:
     """
-    CALM: Normal baseline user behavior.
-    - Relaxed interaction, natural rhythm
-    - Low hesitation, low corrections
-    - Stable device motion, moderate typing speed
-    - Regular engagement level
+    Generate n samples for a given cognitive state using uniform distribution
+    within the specified range, then add Gaussian noise (5-10% of range).
     """
-    return pd.DataFrame({
-        "hesitation_ratio": np.random.beta(2, 20, n).clip(0.01, 0.15),
-        "correction_rate": np.random.beta(2, 45, n).clip(0.005, 0.08),
-        "typing_speed_cps": np.random.normal(3.8, 0.5, n).clip(2.5, 5.5),
-        "typing_rhythm_variance": np.random.gamma(2.5, 14, n).clip(10, 60),
-        "touch_duration_mean": np.random.normal(115, 18, n).clip(70, 170),
-        "gyroscope_variance": np.random.gamma(3, 0.004, n).clip(0.005, 0.025),
-        "interaction_intensity": np.random.poisson(8, n).clip(4, 15),
-        "swipe_straightness": np.random.normal(0.83, 0.04, n).clip(0.72, 0.94),
-        "cognitive_state": "calm",
-    })
+    ranges = STATE_RANGES[state]
+    data = {}
+
+    for feat in FEATURE_NAMES:
+        lo, hi = ranges[feat]
+        feat_range = hi - lo
+
+        # Generate base samples uniformly within the range
+        mid = (lo + hi) / 2.0
+        spread = feat_range / 2.0
+        # Use truncated normal centered in range for more realistic bell shape
+        base = np.random.normal(mid, spread * 0.4, n)
+
+        # Add Gaussian noise: 5-10% of feature range
+        noise_scale = feat_range * np.random.uniform(0.05, 0.10)
+        noise = np.random.normal(0, noise_scale, n)
+        values = base + noise
+
+        # Clamp to global feature bounds
+        global_lo, global_hi = FEATURE_BOUNDS[feat]
+        values = np.clip(values, global_lo, global_hi)
+
+        data[feat] = values
+
+    data["label"] = state
+    return pd.DataFrame(data)
 
 
-def generate_focused(n: int) -> pd.DataFrame:
+def generate_edge_cases(n: int) -> pd.DataFrame:
     """
-    FOCUSED: User actively performing an important task.
-    - Slightly slower, more deliberate typing
-    - Very few corrections (careful input)
-    - Stable but attentive behavior
-    - Higher interaction density (engaged)
+    Generate edge-case samples that blur boundaries between adjacent states.
+    These use interpolated features between two neighboring states.
     """
-    return pd.DataFrame({
-        "hesitation_ratio": np.random.beta(2.5, 16, n).clip(0.03, 0.20),
-        "correction_rate": np.random.beta(2, 50, n).clip(0.005, 0.06),
-        "typing_speed_cps": np.random.normal(3.2, 0.4, n).clip(2.0, 4.5),
-        "typing_rhythm_variance": np.random.gamma(2, 12, n).clip(8, 50),
-        "touch_duration_mean": np.random.normal(130, 20, n).clip(85, 190),
-        "gyroscope_variance": np.random.gamma(2.5, 0.004, n).clip(0.004, 0.022),
-        "interaction_intensity": np.random.poisson(10, n).clip(5, 18),
-        "swipe_straightness": np.random.normal(0.85, 0.035, n).clip(0.75, 0.95),
-        "cognitive_state": "focused",
-    })
+    # Adjacent state pairs that are hardest to distinguish
+    boundary_pairs = [
+        ("calm", "focused"),
+        ("focused", "distressed"),
+        ("distressed", "panicked"),
+        ("panicked", "coerced"),
+        ("calm", "robotic"),  # Low hesitation overlap
+    ]
 
+    samples_per_pair = n // len(boundary_pairs)
+    remainder = n - samples_per_pair * len(boundary_pairs)
+    frames = []
 
-def generate_distressed(n: int) -> pd.DataFrame:
-    """
-    DISTRESSED: Beginning of uncertainty/anxiety.
-    - Elevated hesitation (thinking, doubting)
-    - Increased corrections (mistakes from divided attention)
-    - Typing slows, rhythm becomes erratic
-    - Slight device tremor
-    - Reduced swipe precision
-    """
-    return pd.DataFrame({
-        "hesitation_ratio": np.random.beta(4, 8, n).clip(0.15, 0.50),
-        "correction_rate": np.random.beta(3, 12, n).clip(0.08, 0.30),
-        "typing_speed_cps": np.random.normal(2.5, 0.5, n).clip(1.2, 3.8),
-        "typing_rhythm_variance": np.random.gamma(3.5, 22, n).clip(30, 130),
-        "touch_duration_mean": np.random.normal(160, 30, n).clip(100, 250),
-        "gyroscope_variance": np.random.gamma(3, 0.008, n).clip(0.010, 0.045),
-        "interaction_intensity": np.random.poisson(6, n).clip(2, 12),
-        "swipe_straightness": np.random.normal(0.74, 0.06, n).clip(0.55, 0.88),
-        "cognitive_state": "distressed",
-    })
+    for i, (state_a, state_b) in enumerate(boundary_pairs):
+        count = samples_per_pair + (1 if i < remainder else 0)
+        ranges_a = STATE_RANGES[state_a]
+        ranges_b = STATE_RANGES[state_b]
 
+        data = {}
+        for feat in FEATURE_NAMES:
+            lo_a, hi_a = ranges_a[feat]
+            lo_b, hi_b = ranges_b[feat]
 
-def generate_panicked(n: int) -> pd.DataFrame:
-    """
-    PANICKED: Active scam victim, severe stress.
-    - Very high hesitation (frozen, conflicted)
-    - High corrections (panic-induced errors)
-    - Very slow typing (distracted by phone call)
-    - Highly erratic rhythm
-    - Significant device shaking (physical stress)
-    - Low interaction (paralysis)
-    """
-    return pd.DataFrame({
-        "hesitation_ratio": np.random.beta(6, 5, n).clip(0.30, 0.75),
-        "correction_rate": np.random.beta(5, 7, n).clip(0.15, 0.55),
-        "typing_speed_cps": np.random.normal(1.5, 0.4, n).clip(0.5, 2.8),
-        "typing_rhythm_variance": np.random.gamma(4, 35, n).clip(60, 280),
-        "touch_duration_mean": np.random.normal(220, 45, n).clip(130, 400),
-        "gyroscope_variance": np.random.gamma(4, 0.01, n).clip(0.020, 0.080),
-        "interaction_intensity": np.random.poisson(3, n).clip(1, 8),
-        "swipe_straightness": np.random.normal(0.63, 0.08, n).clip(0.40, 0.80),
-        "cognitive_state": "panicked",
-    })
+            # Interpolate: pick a blend factor near the boundary (0.4-0.6)
+            blend = np.random.uniform(0.35, 0.65, count)
 
+            mid_a = (lo_a + hi_a) / 2.0
+            mid_b = (lo_b + hi_b) / 2.0
+            spread_a = (hi_a - lo_a) / 2.0
+            spread_b = (hi_b - lo_b) / 2.0
 
-def generate_coerced(n: int) -> pd.DataFrame:
-    """
-    COERCED: Most dangerous state — victim under active external control.
-    - Extreme hesitation with sudden bursts (told what to do, then freezes)
-    - Very high corrections (conflicted between compliance and resistance)
-    - Extremely slow typing
-    - Maximum rhythm irregularity
-    - Severe device instability
-    - Sporadic interaction (follows instructions mechanically)
-    """
-    return pd.DataFrame({
-        "hesitation_ratio": np.random.beta(7, 4, n).clip(0.45, 0.90),
-        "correction_rate": np.random.beta(5, 5, n).clip(0.20, 0.65),
-        "typing_speed_cps": np.random.normal(1.0, 0.3, n).clip(0.3, 2.0),
-        "typing_rhythm_variance": np.random.gamma(5, 40, n).clip(100, 350),
-        "touch_duration_mean": np.random.normal(280, 60, n).clip(160, 500),
-        "gyroscope_variance": np.random.gamma(5, 0.012, n).clip(0.030, 0.120),
-        "interaction_intensity": np.random.poisson(2, n).clip(1, 6),
-        "swipe_straightness": np.random.normal(0.55, 0.09, n).clip(0.30, 0.75),
-        "cognitive_state": "coerced",
-    })
+            # Blend centers and generate from the blended distribution
+            blended_mid = mid_a * (1 - blend) + mid_b * blend
+            blended_spread = spread_a * (1 - blend) + spread_b * blend
 
+            values = np.random.normal(blended_mid, blended_spread * 0.3)
 
-def generate_robotic(n: int) -> pd.DataFrame:
-    """
-    ROBOTIC: Automated script / remote malware control.
-    - Near-zero hesitation (no human decision-making)
-    - Zero corrections (scripted actions, no mistakes)
-    - Extremely fast typing (inhuman speed)
-    - Near-zero rhythm variance (machine precision)
-    - Zero device motion (phone on desk, remotely controlled)
-    - Very high interaction density (rapid automated taps)
-    - Perfect swipe paths (programmatic gestures)
-    """
-    return pd.DataFrame({
-        "hesitation_ratio": np.random.exponential(0.005, n).clip(0.0, 0.03),
-        "correction_rate": np.random.exponential(0.002, n).clip(0.0, 0.01),
-        "typing_speed_cps": np.random.normal(9.5, 0.3, n).clip(8.0, 12.0),
-        "typing_rhythm_variance": np.random.exponential(1.5, n).clip(0.1, 6.0),
-        "touch_duration_mean": np.random.normal(48, 4, n).clip(35, 62),
-        "gyroscope_variance": np.random.exponential(0.0005, n).clip(0.0001, 0.003),
-        "interaction_intensity": np.random.poisson(18, n).clip(12, 28),
-        "swipe_straightness": np.random.normal(0.98, 0.008, n).clip(0.96, 1.0),
-        "cognitive_state": "robotic",
-    })
+            # Add noise
+            feat_range = max(hi_a - lo_a, hi_b - lo_b)
+            noise = np.random.normal(0, feat_range * 0.07, count)
+            values = values + noise
+
+            # Clamp to global bounds
+            global_lo, global_hi = FEATURE_BOUNDS[feat]
+            values = np.clip(values, global_lo, global_hi)
+            data[feat] = values
+
+        # Assign label to the "more severe" state in the pair
+        # (makes the model learn to err on the side of caution)
+        data["label"] = state_b
+        frames.append(pd.DataFrame(data))
+
+    return pd.concat(frames, ignore_index=True)
 
 
 def main():
     print("=" * 70)
-    print("AEGIS-X Phase 4B: Cognitive State Dataset Generation")
+    print("  AEGIS-X: Cognitive State Dataset Generation")
     print("=" * 70)
     print()
 
-    print(f"Generating {N_PER_STATE} samples per state (6 states)...")
+    # Calculate sample counts
+    # 95% regular samples, 5% edge cases
+    n_edge = int(TOTAL_SAMPLES * 0.05)  # 250 edge cases
+    n_regular = TOTAL_SAMPLES - n_edge   # 4750 regular samples
+    n_per_state = n_regular // N_STATES  # ~791 per state
+    # Distribute remainder
+    remainder = n_regular - (n_per_state * N_STATES)
+
+    print(f"Total samples:     {TOTAL_SAMPLES}")
+    print(f"Regular samples:   {n_regular} ({n_per_state} per state + {remainder} extra)")
+    print(f"Edge cases:        {n_edge} (5% boundary-blurring samples)")
     print()
 
-    df_calm = generate_calm(N_PER_STATE)
-    df_focused = generate_focused(N_PER_STATE)
-    df_distressed = generate_distressed(N_PER_STATE)
-    df_panicked = generate_panicked(N_PER_STATE)
-    df_coerced = generate_coerced(N_PER_STATE)
-    df_robotic = generate_robotic(N_PER_STATE)
+    # Generate regular samples for each state
+    frames = []
+    states = list(STATE_RANGES.keys())
+    for i, state in enumerate(states):
+        count = n_per_state + (1 if i < remainder else 0)
+        df_state = generate_samples_for_state(state, count)
+        frames.append(df_state)
+        print(f"  Generated {count:>4} samples for: {state}")
+
+    # Generate edge cases
+    df_edge = generate_edge_cases(n_edge)
+    frames.append(df_edge)
+    print(f"  Generated {len(df_edge):>4} edge-case samples")
 
     # Combine and shuffle
-    dataset = pd.concat(
-        [df_calm, df_focused, df_distressed, df_panicked, df_coerced, df_robotic],
-        ignore_index=True
-    )
+    dataset = pd.concat(frames, ignore_index=True)
     dataset = dataset.sample(frac=1, random_state=42).reset_index(drop=True)
 
+    # Verify total
+    assert len(dataset) == TOTAL_SAMPLES, f"Expected {TOTAL_SAMPLES}, got {len(dataset)}"
+
     # Save
-    output_path = OUTPUT_DIR / "cognitive_training_dataset.csv"
-    dataset.to_csv(output_path, index=False)
+    dataset.to_csv(OUTPUT_FILE, index=False)
 
-    print(f"Total samples: {len(dataset):,}")
-    print(f"\nClass distribution:")
-    print(dataset["cognitive_state"].value_counts().to_string())
-    print(f"\nFeature statistics per state:")
-    print("-" * 70)
-
-    feature_cols = [
-        "hesitation_ratio", "correction_rate", "typing_speed_cps",
-        "gyroscope_variance", "interaction_intensity"
-    ]
-    summary = dataset.groupby("cognitive_state")[feature_cols].mean().round(4)
-    print(summary.to_string())
-    print(f"\nSaved to: {output_path.resolve()}")
     print()
+    print(f"Dataset shape: {dataset.shape}")
+    print(f"\nClass distribution:")
+    print(dataset["label"].value_counts().sort_index().to_string())
+    print(f"\nFeature statistics (mean per state):")
+    print("-" * 70)
+    summary = dataset.groupby("label")[FEATURE_NAMES].mean().round(4)
+    print(summary.to_string())
+    print()
+    print(f"Saved to: {OUTPUT_FILE.resolve()}")
+    print()
+    print("=" * 70)
+    print("  Dataset generation complete!")
+    print("=" * 70)
 
 
 if __name__ == "__main__":

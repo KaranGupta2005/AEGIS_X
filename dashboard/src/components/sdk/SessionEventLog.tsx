@@ -34,8 +34,8 @@ export const SessionEventLog: React.FC<SessionEventLogProps> = ({ timeline, even
       className="scrollbar-hide"
     >
       {recent.map((entry, i) => {
-        const dc = DECISION_COLORS[entry.decision] || '#6B7280'
-        const sc = STATE_COLORS[entry.cognitive_state] || '#6B7280'
+        const dc = DECISION_COLORS[entry.decision] || 'var(--text-muted)'
+        const sc = STATE_COLORS[entry.cognitive_state] || 'var(--text-muted)'
         return (
           <motion.div
             key={entry.event_number}
@@ -47,10 +47,10 @@ export const SessionEventLog: React.FC<SessionEventLogProps> = ({ timeline, even
               background: i === 0 ? 'rgba(255,255,255,0.03)' : 'transparent',
             }}
           >
-            <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.25)', fontFamily: 'JetBrains Mono', width: 28 }}>
+            <span style={{ fontSize: 7, color: '#5b8cc7', fontFamily: 'JetBrains Mono', width: 28 }}>
               #{entry.event_number}
             </span>
-            <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.2)', fontFamily: 'JetBrains Mono', width: 36 }}>
+            <span style={{ fontSize: 7, color: '#5b8cc7', fontFamily: 'JetBrains Mono', width: 36 }}>
               {entry.time}
             </span>
             <span style={{ fontSize: 8, fontWeight: 700, color: dc, fontFamily: 'Space Grotesk', width: 44 }}>

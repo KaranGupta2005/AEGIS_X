@@ -1,8 +1,25 @@
 # Application configuration loaded from environment variables
 from dotenv import load_dotenv
 import os
+import sys
 
 load_dotenv()
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FIX #5: Production Secret Enforcement
+# ═══════════════════════════════════════════════════════════════════════════════
+_DEMO_MODE = os.getenv("AEGISX_DEMO_MODE", "false").lower() == "true"
+_SESSION_SECRET = os.getenv("AEGISX_SESSION_SECRET", "aegisx_hackathon_2026_secret")
+
+if not _DEMO_MODE and _SESSION_SECRET == "aegisx_hackathon_2026_secret":
+    print(
+        "\n╔══════════════════════════════════════════════════════════════════╗\n"
+        "║  CRITICAL: AEGISX_SESSION_SECRET is the default value!         ║\n"
+        "║  This is NOT safe for production. Set a strong secret or       ║\n"
+        "║  enable AEGISX_DEMO_MODE=true for development/hackathon use.   ║\n"
+        "╚══════════════════════════════════════════════════════════════════╝\n",
+        file=sys.stderr,
+    )
 
 # PostgreSQL
 POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
@@ -27,7 +44,7 @@ CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "AEGISX_CORS_ORIGINS",
-        "http://localhost:3000,http://localhost:5173,http://localhost:8000,https://aegisx-2026.web.app,https://aegisx-2026.firebaseapp.com,https://aegisx-backend-t1v7.onrender.com"
+        "http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,https://aegisx-2026.web.app,https://aegisx-2026.firebaseapp.com,https://aegisx-backend-t1v7.onrender.com"
     ).split(",")
     if origin.strip()
 ]
@@ -43,15 +60,15 @@ TRUST_WEIGHT_TRANSACTION = 0.20
 TRUST_WEIGHT_COGNITIVE = 0.20
 
 # Decision Thresholds (standard continuous auth)
-THRESHOLD_ALLOW = 0.80    # Above → ALLOW
-THRESHOLD_STEP_UP = 0.50  # Between 0.50–0.80 → STEP_UP
+THRESHOLD_ALLOW = 0.78    # Above → ALLOW
+THRESHOLD_STEP_UP = 0.50  # Between 0.50–0.78 → STEP_UP
 # Below 0.50 → BLOCK
 
-# CUSUM Parameters (general purpose)
-CUSUM_EXPECTED_SIMILARITY = 0.92
-CUSUM_ALLOWANCE = 0.03
-CUSUM_DRIFT_THRESHOLD = 0.15
-CUSUM_INSTANT_JUMP = 0.10
+# CUSUM Parameters (V2 — sensitive detection)
+CUSUM_EXPECTED_SIMILARITY = 0.88
+CUSUM_ALLOWANCE = 0.02
+CUSUM_DRIFT_THRESHOLD = 0.08
+CUSUM_INSTANT_JUMP = 0.07
 
 # Cognitive Stability Scores
 COGNITIVE_STABILITY = {
@@ -68,3 +85,26 @@ TX_AMOUNT_LOW = 5000
 TX_AMOUNT_MEDIUM = 25000
 TX_AMOUNT_HIGH = 100000
 TX_AMOUNT_EXTREME = 500000
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ADAPTIVE VERIFICATION ENGINE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Gemini API (multimodal reasoning layer — optional)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+
+# Groq API (fast inference for voice verification — optional)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+
+# Verification thresholds
+VERIFY_TRUST_VOICE = 0.70       # Trust 50–70% → Voice Challenge
+VERIFY_TRUST_FACE = 0.50        # Trust < 50% → Face Liveness
+VERIFY_TRUST_CRITICAL = 0.30    # Critical → Hold + Notify
+
+# Voice verification
+VOICE_SIMILARITY_THRESHOLD = 0.25   # Tuned for sibling rejection + self acceptance
+VOICE_REPLAY_THRESHOLD = 0.85       # Above this → suspected replay
+
+# Face verification
+FACE_SIMILARITY_THRESHOLD = 0.70    # FaceNet embedding cosine threshold
+FACE_LIVENESS_CONFIDENCE = 0.80     # Minimum liveness confidence

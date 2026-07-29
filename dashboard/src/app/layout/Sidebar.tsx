@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import {
   Radio, TrendingDown, Brain, FileWarning, RotateCcw,
   PanelLeftClose, PanelLeftOpen, Shield, LogOut, Settings, HelpCircle,
-  ChevronLeft, ChevronRight, Wifi, WifiOff, CreditCard, Sun, Moon,
+  ChevronLeft, ChevronRight, Wifi, WifiOff, CreditCard, Sun, Moon, GitBranch,
 } from 'lucide-react'
 import { logout, getUsername } from '../../services/auth'
 import { useStore } from '../../services/store'
@@ -17,6 +17,7 @@ const navItems = [
   { id: 'cognitive', label: 'Cognitive Analysis', icon: Brain,        color: 'var(--accent-purple)', path: '/app/cognitive' },
   { id: 'incident',  label: 'Incident Explorer', icon: FileWarning,  color: 'var(--accent-warn)',   path: '/app/incident'  },
   { id: 'replay',    label: 'Session Replay',    icon: RotateCcw,    color: 'var(--accent-danger)', path: '/app/replay'    },
+  { id: 'identity',  label: 'Identity Flow',     icon: GitBranch,    color: 'var(--accent-blue)',   path: '/app/identity'  },
 ]
 
 interface SidebarProps {
@@ -52,8 +53,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
         <AnimatePresence mode="wait">
           {!collapsed ? (
             <motion.div key="logo-full" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.18 }} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
-                <Shield size={17} style={{ color: '#10B981' }} />
+              <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                <Shield size={17} style={{ color: '#3B82F6' }} />
               </div>
               <div>
                 <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-main)', margin: 0, lineHeight: 1, fontFamily: 'Space Grotesk, sans-serif' }}>AEGIS-X</p>
@@ -62,8 +63,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
             </motion.div>
           ) : (
             <motion.div key="logo-icon" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
-                <Shield size={17} style={{ color: '#10B981' }} />
+              <div style={{ width: 34, height: 34, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                <Shield size={17} style={{ color: '#3B82F6' }} />
               </div>
             </motion.div>
           )}
@@ -142,7 +143,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)' }}>
               {isDark ? <Sun size={15} /> : <Moon size={15} />}
             </button>
-            <div title={state.isConnected ? 'Pipeline Online' : 'Disconnected'} style={{ width: 8, height: 8, borderRadius: '50%', background: state.isConnected ? '#16A34A' : '#EF4444', boxShadow: state.isConnected ? '0 0 6px #16A34A' : '0 0 6px #EF4444' }} />
+            <div title={state.isConnected ? 'Pipeline Online' : 'Disconnected'} style={{ width: 8, height: 8, borderRadius: '50%', background: state.isConnected ? '#2563EB' : '#EF4444', boxShadow: state.isConnected ? '0 0 6px #2563EB' : '0 0 6px #EF4444' }} />
             <button onClick={() => logout()} title="Sign out" style={{ width: 32, height: 32, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}
               onMouseEnter={e => { e.currentTarget.style.color = '#EF4444' }}
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)' }}>
@@ -162,7 +163,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
             </button>
             <div style={{ borderRadius: 12, padding: '11px 13px', marginBottom: 8, background: 'var(--accent-dim)', border: '1px solid var(--border-light)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7 }}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: state.isConnected ? '#16A34A' : '#EF4444', animation: state.isConnected ? 'pulse 1.5s ease-in-out infinite' : 'none' }} />
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: state.isConnected ? '#2563EB' : '#EF4444', animation: state.isConnected ? 'pulse 1.5s ease-in-out infinite' : 'none' }} />
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-main)', fontFamily: 'JetBrains Mono, monospace' }}>
                   {state.isConnected ? 'Pipeline Active' : 'Disconnected'}
                 </span>
@@ -173,11 +174,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
               ].map(({ label, ok }) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>{label}</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: ok ? '#16A34A' : '#EF4444', fontFamily: 'JetBrains Mono, monospace' }}>{ok ? 'Online' : 'Offline'}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: ok ? '#2563EB' : '#EF4444', fontFamily: 'JetBrains Mono, monospace' }}>{ok ? 'Online' : 'Offline'}</span>
                 </div>
               ))}
               <div style={{ height: 3, background: 'var(--border-light)', borderRadius: 99, overflow: 'hidden', marginTop: 5 }}>
-                <div style={{ height: '100%', borderRadius: 99, transition: 'width 0.5s', width: state.isConnected ? '92%' : '0%', background: isDark ? 'linear-gradient(to right, #10B981, #34D399)' : 'linear-gradient(to right, #8B1A1A, #C41E3A)' }} />
+                <div style={{ height: '100%', borderRadius: 99, transition: 'width 0.5s', width: state.isConnected ? '92%' : '0%', background: isDark ? 'linear-gradient(to right, #3B82F6, #34D399)' : 'linear-gradient(to right, #8B1A1A, #C41E3A)' }} />
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 4px' }}>

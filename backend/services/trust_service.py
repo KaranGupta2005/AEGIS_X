@@ -122,7 +122,7 @@ class TrustService:
     def _compute_drift_penalty(self, drift_detected: bool, severity: str) -> float:
         if not drift_detected:
             return 0.0
-        penalties = {"none": 0.0, "low": 0.05, "medium": 0.10, "high": 0.18, "critical": 0.30}
+        penalties = {"none": 0.0, "low": 0.08, "medium": 0.15, "high": 0.25, "critical": 0.40}
         return penalties.get(severity, 0.0)
 
     def _classify_trust_level(self, effective_trust: float) -> str:

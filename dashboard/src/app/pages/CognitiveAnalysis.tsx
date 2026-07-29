@@ -29,7 +29,7 @@ const CognitiveAnalysis: React.FC = () => {
   const { state } = useStore()
   const { trustScore, similarity, cognitiveState, cognitiveStability = 1, driftDetected, driftSeverity = 'none', anomalyScore = 0, fraudProbability = 0, velocity, entropy, intentVector = { coercion_probability: 0, takeover_probability: 0, anomaly_severity: 0, robotic_probability: 0 }, cognitiveHistory, timeline, isConnected, decision, reasons: stateReasons } = state
 
-  const stateColor = STATE_COLORS[cognitiveState] || '#94A3B8'
+  const stateColor = STATE_COLORS[cognitiveState] || 'var(--text-muted)'
   const whyReasons = STATE_REASONS[cognitiveState] || STATE_REASONS.calm
 
   const treegraphOptions: Highcharts.Options = {
@@ -49,9 +49,9 @@ const CognitiveAnalysis: React.FC = () => {
         { id: '8', parent: '3', name: driftDetected ? 'DRIFT DETECTED' : 'STABLE' },
         { id: '9', parent: '6', name: `Decision: ${decision}` },
       ],
-      dataLabels: { pointFormat: '{point.name}', style: { color: '#F1F5F9', textOutline: '2px #0A0D14', fontSize: '12px', fontWeight: '700', fontFamily: 'Space Grotesk' }, crop: false },
+      dataLabels: { pointFormat: '{point.name}', style: { color: '#1e293b', textOutline: '2px #ffffff', fontSize: '12px', fontWeight: '700', fontFamily: 'Space Grotesk' }, crop: false },
       marker: { radius: 10, lineWidth: 2 },
-      link: { color: 'rgba(255,255,255,0.15)', lineWidth: 2 },
+      link: { color: 'var(--text-muted)', lineWidth: 2 },
       levels: [
         { level: 1, marker: { fillColor: '#10B981' }, dataLabels: { x: 10 } },
         { level: 2, colorByPoint: true },
@@ -118,7 +118,7 @@ const CognitiveAnalysis: React.FC = () => {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
               <XAxis dataKey="idx" hide />
               <YAxis domain={[0, 100]} tick={{ fill: '#475569', fontSize: 8 }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ background: '#1E293B', border: '1px solid #334155', borderRadius: 6, fontSize: 9, color: '#E2E8F0' }} />
+              <Tooltip contentStyle={{ background: '#1E293B', border: '1px solid #334155', borderRadius: 6, fontSize: 9, color: 'var(--text-main)' }} />
               <Area type="monotone" dataKey="trust" stroke="#10B981" fill="url(#cgTrust)" strokeWidth={2} name="Trust" />
               <Area type="monotone" dataKey="risk" stroke="#8B5CF6" fill="url(#cgRisk)" strokeWidth={2} name="Risk" />
               <Area type="monotone" dataKey="anomaly" stroke="#EF4444" fill="url(#cgAnom)" strokeWidth={1.5} name="Anomaly" />
@@ -145,7 +145,7 @@ const CognitiveAnalysis: React.FC = () => {
             </div>
             {whyReasons.map((r, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 5 }}>
-                <div style={{ width: 5, height: 5, borderRadius: '50%', background: i < 2 ? stateColor : '#64748B', flexShrink: 0, marginTop: 4 }} />
+                <div style={{ width: 5, height: 5, borderRadius: '50%', background: i < 2 ? stateColor : 'var(--text-muted)', flexShrink: 0, marginTop: 4 }} />
                 <span style={{ fontSize: 10, color: 'var(--text-sub)', lineHeight: 1.4 }}>{r}</span>
               </div>
             ))}
@@ -159,7 +159,7 @@ const CognitiveAnalysis: React.FC = () => {
             </div>
             {cognitiveHistory.slice(-10).reverse().map((s, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid var(--border-light)' }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: STATE_COLORS[s] || '#94A3B8', boxShadow: i === 0 ? `0 0 5px ${STATE_COLORS[s]}` : 'none' }} />
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: STATE_COLORS[s] || 'var(--text-muted)', boxShadow: i === 0 ? `0 0 5px ${STATE_COLORS[s]}` : 'none' }} />
                 <span style={{ fontSize: 9, fontWeight: i === 0 ? 700 : 400, color: i === 0 ? 'var(--text-main)' : 'var(--text-sub)', flex: 1 }}>{s}</span>
                 <span style={{ fontSize: 7, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>-{i * 2}s</span>
               </div>
@@ -189,7 +189,7 @@ const CognitiveAnalysis: React.FC = () => {
               <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
                 <div style={{ width: 6, height: 6, borderRadius: 2, background: color }} />
                 <span style={{ fontSize: 9, color: 'var(--text-sub)', width: 55 }}>{s}</span>
-                <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{ flex: 1, height: 4, background: 'var(--accent-dim)', borderRadius: 99, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width 0.5s' }} />
                 </div>
                 <span style={{ fontSize: 8, fontWeight: 700, color, width: 24, textAlign: 'right', fontFamily: 'JetBrains Mono' }}>{pct.toFixed(0)}%</span>
@@ -205,7 +205,7 @@ const CognitiveAnalysis: React.FC = () => {
             ].map(item => (
               <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                 <span style={{ fontSize: 9, color: 'var(--text-sub)', width: 55 }}>{item.label}</span>
-                <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{ flex: 1, height: 4, background: 'var(--accent-dim)', borderRadius: 99, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${item.value * 100}%`, background: item.color, borderRadius: 99 }} />
                 </div>
                 <span style={{ fontSize: 8, fontWeight: 700, color: item.value > 0.5 ? item.color : 'var(--text-muted)', width: 24, textAlign: 'right' }}>{(item.value * 100).toFixed(0)}%</span>

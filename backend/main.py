@@ -5,6 +5,7 @@ from typing import Optional
 import json
 import asyncio
 import time
+import os
 import httpx
 
 from backend.websocket.socket_manager import ConnectionManager
@@ -66,18 +67,18 @@ ws_rate_limiter = WebSocketRateLimiter()
 
 # Self-ping to prevent Render free tier sleep
 async def keep_alive():
-    """Ping self every 10 minutes to prevent Render spin-down."""
+    """Ping self every 10 minutes to prevent Render spin-down. Only runs in production."""
     import os
     url = os.getenv("RENDER_EXTERNAL_URL", "")
     if not url:
-        return
+        return  # Skip in local development
     async with httpx.AsyncClient() as client:
         while True:
             try:
                 await client.get(f"{url}/")
             except Exception:
                 pass
-            await asyncio.sleep(600)  # every 10 minutes
+            await asyncio.sleep(600)
 
 
 @asynccontextmanager
@@ -87,6 +88,20 @@ async def lifespan(app: FastAPI):
     processor = EventProcessor()
     set_processor(processor)
     print("[AEGIS-X] Trust engine ready.")
+
+    # Log provider status at startup
+    from backend.api.verification_routes import get_engine
+    try:
+        engine = get_engine()
+        status = engine.get_providers_status()
+        print("[AEGIS-X] ═══ Provider Status ═══")
+        for name, provider in status.items():
+            symbol = "✓" if provider else "✗"
+            print(f"[AEGIS-X]   {symbol} {name}: {provider or 'MOCK (fallback)'}")
+        print("[AEGIS-X] ══════════════════════")
+    except Exception:
+        print("[AEGIS-X] Provider status check skipped.")
+
     # Start keep-alive background task
     task = asyncio.create_task(keep_alive())
     yield
@@ -107,28 +122,72 @@ app.add_middleware(
     allow_origins=CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-Session-ID", "X-User-Id"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-Session-ID", "X-User-Id", "X-CSRF-Token"],
     expose_headers=["X-RateLimit-Remaining"],
 )
 
 app.add_middleware(RateLimitMiddleware, requests_per_second=50, burst=100)
+
+# Fix #4: Sandbox enforcement middleware
+from backend.core.sandbox_middleware import SandboxEnforcementMiddleware
+app.add_middleware(SandboxEnforcementMiddleware)
+
+# Fix #7: HTTPS redirect middleware (only active in production)
+from backend.core.https_redirect import HTTPSRedirectMiddleware
+app.add_middleware(HTTPSRedirectMiddleware)
 
 from backend.api.session_routes import router as session_router
 from backend.api.event_routes import router as event_router
 from backend.api.monitor_routes import router as monitor_router
 from backend.api.audit_routes import router as audit_router
 from backend.api.auth_routes import router as auth_router
+from backend.api.verification_routes import router as verification_router
+from backend.api.security_routes import router as security_router
+from backend.api.trust_routes import router as trust_router
 
 app.include_router(auth_router)
 app.include_router(session_router)
 app.include_router(event_router)
 app.include_router(monitor_router)
 app.include_router(audit_router)
+app.include_router(verification_router)
+app.include_router(security_router)
+app.include_router(trust_router)
 
 
 @app.get("/", tags=["Health"])
 def health():
     return {"status": "running", "project": "AEGIS-X", "version": "2.0"}
+
+
+@app.get("/health", tags=["Health"])
+def health_detailed():
+    """Detailed health check verifying all subsystems are operational."""
+    processor = get_processor()
+    checks = {
+        "pipeline": processor._pipeline is not None,
+        "cognitive_model": processor._pipeline._cognitive_service._model is not None,
+        "embedding_service": processor._pipeline._embedding_service is not None,
+        "event_processor": True,
+    }
+    # Check verification providers
+    try:
+        from backend.api.verification_routes import get_engine
+        engine = get_engine()
+        providers = engine.get_providers_status()
+        checks["voice_provider"] = providers.get("voice_verifier") is not None
+        checks["face_provider"] = providers.get("face_verifier") is not None
+        checks["liveness_provider"] = providers.get("liveness") is not None
+    except Exception:
+        checks["providers"] = False
+
+    all_healthy = all(checks.values())
+    return {
+        "status": "healthy" if all_healthy else "degraded",
+        "checks": checks,
+        "project": "AEGIS-X",
+        "version": "2.0",
+    }
 
 
 @app.get("/status", tags=["Health"])
@@ -150,7 +209,29 @@ def system_metrics():
 
 
 @app.websocket("/ws/{user_id}")
-async def websocket_sdk(websocket: WebSocket, user_id: str, session_id: Optional[str] = Query(default=None)):
+async def websocket_sdk(websocket: WebSocket, user_id: str, session_id: Optional[str] = Query(default=None), token: Optional[str] = Query(default=None)):
+    # Fix #2: WebSocket auth enabled by default ("true"), bypass in demo mode
+    demo_mode = os.getenv("AEGISX_DEMO_MODE", "false").lower() == "true"
+    ws_auth_enabled = os.getenv("AEGISX_WS_AUTH", "true").lower() == "true"
+
+    if ws_auth_enabled and not demo_mode:
+        # Require valid token for WebSocket connections in production
+        if not token:
+            await websocket.close(code=4001, reason="Token required")
+            return
+        from backend.api.auth_routes import _verify_token
+        payload = _verify_token(token)
+        if not payload:
+            await websocket.close(code=4001, reason="Invalid token")
+            return
+    elif token:
+        # If token provided (even in demo mode), validate it
+        from backend.api.auth_routes import _verify_token
+        payload = _verify_token(token)
+        if not payload:
+            await websocket.close(code=4001, reason="Invalid token")
+            return
+
     await connection_manager.connect_sdk(websocket, user_id)
     processor = get_processor()
     session_info = processor.start_session(user_id, session_id or f"ws_{user_id}")
@@ -159,6 +240,16 @@ async def websocket_sdk(websocket: WebSocket, user_id: str, session_id: Optional
     try:
         while True:
             raw_message = await websocket.receive_text()
+
+            # Fix #8: WebSocket message size limit (16KB max)
+            if len(raw_message) > 16384:
+                await websocket.send_json({
+                    "type": "error",
+                    "message": "Message too large. Maximum size is 16KB.",
+                    "user_id": user_id,
+                })
+                continue
+
             message = json.loads(raw_message)
             msg_type = message.get("type", "behavioral_event")
 
@@ -175,6 +266,8 @@ async def websocket_sdk(websocket: WebSocket, user_id: str, session_id: Optional
                 raw_event = message.get("event", message)
                 tx_amount = message.get("transaction_amount", 0.0)
                 is_new_ben = message.get("is_new_beneficiary", False)
+                # Extract enriched SDK context if the continuous monitoring SDK sent it
+                sdk_context = message.get("sdk_context", None)
 
                 try:
                     result = processor.process_behavioral_event(
@@ -182,6 +275,7 @@ async def websocket_sdk(websocket: WebSocket, user_id: str, session_id: Optional
                         raw_event=raw_event,
                         transaction_amount=tx_amount,
                         is_new_beneficiary=is_new_ben,
+                        sdk_context=sdk_context,
                     )
                     await websocket.send_json(result)
                     await connection_manager.broadcast_to_dashboards({"user_id": user_id, **result})
@@ -192,6 +286,8 @@ async def websocket_sdk(websocket: WebSocket, user_id: str, session_id: Optional
                             "user_id": user_id,
                             "trust_score": result.get("trust_score"),
                             "cognitive_state": result.get("cognitive_state"),
+                            "current_screen": result.get("session_context", {}).get("current_screen", "unknown"),
+                            "sdk_state": result.get("session_context", {}).get("sdk_state", "OBSERVING"),
                         })
                 except Exception as proc_err:
                     print(f"[AEGIS-X] Processing error for {user_id}: {proc_err}")
@@ -220,10 +316,30 @@ async def websocket_dashboard(websocket: WebSocket):
     try:
         while True:
             raw_message = await websocket.receive_text()
+
+            # Fix #8: WebSocket message size limit (16KB max)
+            if len(raw_message) > 16384:
+                await websocket.send_json({
+                    "type": "error",
+                    "message": "Message too large. Maximum size is 16KB.",
+                })
+                continue
+
             message = json.loads(raw_message)
-            if message.get("type") == "get_sessions":
-                processor = get_processor()
-                await websocket.send_json({"type": "session_list", "users": processor.get_active_users()})
+            msg_type = message.get("type", "")
+            processor = get_processor()
+
+            if msg_type == "get_sessions":
+                await websocket.send_json({
+                    "type": "session_list",
+                    "users": processor.get_active_users(),
+                })
+            elif msg_type == "get_session_summary":
+                uid = message.get("user_id", "")
+                summary = processor.get_session_summary(uid)
+                await websocket.send_json({"type": "session_summary", **summary})
+            elif msg_type == "ping":
+                await websocket.send_json({"type": "pong"})
     except WebSocketDisconnect:
         pass
     finally:

@@ -9,39 +9,44 @@ interface LiveTrustChartProps {
 const CustomTooltip = ({ active, payload }: any) => {
   if (!active || !payload?.length) return null
   const t = payload[0].value as number
-  const color = t > 85 ? '#10B981' : t > 60 ? '#F59E0B' : '#EF4444'
+  const color = t > 85 ? '#3B82F6' : t > 60 ? '#F59E0B' : '#EF4444'
   return (
-    <div style={{ background: 'rgba(8,12,20,0.95)', border: `1px solid ${color}30`, borderRadius: 8, padding: '6px 10px' }}>
+    <div style={{ background: 'var(--bg-elevated)', border: `1px solid var(--border-medium)`, borderRadius: 8, padding: '6px 10px', boxShadow: 'var(--shadow-md)' }}>
       <div style={{ fontSize: 14, fontWeight: 800, color, fontFamily: 'Space Grotesk' }}>{t.toFixed(1)}%</div>
-      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono' }}>{payload[0].payload.cognitive_state?.toUpperCase()}</div>
+      <div style={{ fontSize: 8, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>{payload[0].payload.cognitive_state?.toUpperCase()}</div>
     </div>
   )
 }
 
 export const LiveTrustChart: React.FC<LiveTrustChartProps> = ({ timeline }) => {
   const data = timeline.slice(-40)
+  
+  // Dynamic color based on latest trust value
+  const latestTrust = data.length > 0 ? data[data.length - 1].trust : 95
+  const chartColor = latestTrust > 78 ? '#3B82F6' : latestTrust > 50 ? '#F59E0B' : '#EF4444'
+  const gradId = `trustGrad_${Math.round(latestTrust)}`
 
   return (
     <div style={{ height: 80, width: '100%' }}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
           <defs>
-            <linearGradient id="trustGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#10B981" stopOpacity={0.3} />
-              <stop offset="100%" stopColor="#10B981" stopOpacity={0} />
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={chartColor} stopOpacity={0.40} />
+              <stop offset="100%" stopColor={chartColor} stopOpacity={0.02} />
             </linearGradient>
           </defs>
           <XAxis hide />
           <YAxis hide domain={[0, 100]} />
-          <ReferenceLine y={85} stroke="rgba(16,185,129,0.2)" strokeDasharray="3 3" />
-          <ReferenceLine y={60} stroke="rgba(239,68,68,0.2)" strokeDasharray="3 3" />
+          <ReferenceLine y={78} stroke="rgba(59,130,246,0.25)" strokeDasharray="3 3" />
+          <ReferenceLine y={50} stroke="rgba(239,68,68,0.30)" strokeDasharray="3 3" />
           <Tooltip content={<CustomTooltip />} />
           <Area
             type="monotone"
             dataKey="trust"
-            stroke="#10B981"
-            strokeWidth={2}
-            fill="url(#trustGrad)"
+            stroke={chartColor}
+            strokeWidth={2.5}
+            fill={`url(#${gradId})`}
             dot={false}
             isAnimationActive={false}
           />

@@ -11,7 +11,7 @@ export const LiveBadge: React.FC<LiveBadgeProps> = ({ connected, label = 'LIVE' 
     <div style={{ position: 'relative', width: 7, height: 7 }}>
       <div style={{
         width: 7, height: 7, borderRadius: '50%',
-        background: connected ? '#10B981' : '#6B7280',
+        background: connected ? '#3B82F6' : 'var(--text-muted)',
       }} />
       {connected && (
         <motion.div
@@ -19,14 +19,14 @@ export const LiveBadge: React.FC<LiveBadgeProps> = ({ connected, label = 'LIVE' 
           transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
           style={{
             position: 'absolute', inset: 0,
-            borderRadius: '50%', background: '#10B981',
+            borderRadius: '50%', background: '#3B82F6',
           }}
         />
       )}
     </div>
     <span style={{
       fontSize: 9, fontWeight: 700, letterSpacing: '0.12em',
-      color: connected ? '#10B981' : '#6B7280',
+      color: connected ? '#3B82F6' : 'var(--text-muted)',
       fontFamily: 'JetBrains Mono',
     }}>
       {connected ? label : 'OFFLINE'}

@@ -28,22 +28,23 @@ class CUSUMDetector:
     """
     One-sided upper CUSUM for detecting downward similarity drift.
 
-    Standard parameters (general purpose):
-        expected_similarity = 0.92  (center of normal user range)
-        allowance = 0.03            (ignore deviations < 3%)
-        drift_threshold = 0.15      (cumulative evidence needed)
-        instant_jump_threshold = 0.10 (single-step catastrophic drop)
+    Tuned parameters (V2 — sensitive detection):
+        expected_similarity = 0.88  (realistic center with diverse baselines)
+        allowance = 0.02            (detect smaller deviations — 2%)
+        drift_threshold = 0.08      (trigger faster — less cumulative needed)
+        instant_jump_threshold = 0.07 (catch smaller sudden drops)
 
-    These values are general-purpose and work across different input
-    distributions without being tuned to a specific dataset.
+    Tuned for the V2 dataset which has wider normal distributions,
+    meaning similarity scores naturally vary more. The lower thresholds
+    ensure drift is caught sooner, especially during demo scenarios.
     """
 
     def __init__(
         self,
-        expected_similarity: float = 0.92,
-        allowance: float = 0.03,
-        drift_threshold: float = 0.15,
-        instant_jump_threshold: float = 0.10,
+        expected_similarity: float = 0.88,
+        allowance: float = 0.02,
+        drift_threshold: float = 0.08,
+        instant_jump_threshold: float = 0.07,
     ):
         self.expected_similarity = expected_similarity
         self.allowance = allowance
@@ -115,11 +116,11 @@ class CUSUMDetector:
         if not self._drift_detected:
             return DriftSeverity.NONE
 
-        if instant_jump or similarity < 0.40:
+        if instant_jump or similarity < 0.50:
             return DriftSeverity.CRITICAL
-        elif similarity < 0.55:
+        elif similarity < 0.62:
             return DriftSeverity.HIGH
-        elif similarity < 0.70:
+        elif similarity < 0.75:
             return DriftSeverity.MEDIUM
         elif self._cusum_pos > self.drift_threshold:
             return DriftSeverity.LOW

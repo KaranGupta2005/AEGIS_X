@@ -17,8 +17,14 @@ from datetime import datetime, timezone
 
 class DecisionService:
 
-    THRESHOLD_ALLOW = 0.80
+    THRESHOLD_ALLOW = 0.78
     THRESHOLD_BLOCK = 0.50
+    # Hysteresis: once dropped to STEP_UP, need higher trust to recover to ALLOW
+    # This prevents rapid toggling at the boundary
+    HYSTERESIS_RECOVER = 0.85
+
+    def __init__(self):
+        self._previous_decision: str = "ALLOW"
 
     def decide(
         self,
@@ -40,10 +46,18 @@ class DecisionService:
             )
 
         # Rule 2: Rapid trust decline while in ALLOW zone → escalate to STEP_UP
-        if trust_velocity < -0.025 and base_action == "ALLOW":
+        # V2: More sensitive — velocity < -0.015 (was -0.025)
+        if trust_velocity < -0.015 and base_action == "ALLOW":
             base_action = "STEP_UP"
             escalation_factors.append(
                 f"Rapid trust decline (velocity={trust_velocity:.4f})"
+            )
+
+        # Rule 2b: VERY rapid decline → BLOCK regardless of current zone
+        if trust_velocity < -0.05 and base_action != "BLOCK":
+            base_action = "BLOCK"
+            escalation_factors.append(
+                f"Trust collapsing (velocity={trust_velocity:.4f}) — emergency block"
             )
 
         # Rule 3: Drift + severity medium+ → escalate one level
@@ -51,15 +65,29 @@ class DecisionService:
             if base_action == "ALLOW":
                 base_action = "STEP_UP"
                 escalation_factors.append(f"Behavioral drift ({drift_severity})")
-            elif drift_severity == "critical" and base_action == "STEP_UP":
+            elif drift_severity in ("high", "critical") and base_action == "STEP_UP":
                 base_action = "BLOCK"
-                escalation_factors.append("Critical drift → BLOCK")
+                escalation_factors.append(f"{drift_severity.title()} drift → BLOCK")
 
         # Rule 4: High-value + panicked → BLOCK
         if transaction_amount > 50000 and cognitive_state == "panicked":
             base_action = "BLOCK"
             escalation_factors.append(
                 f"₹{transaction_amount:,.0f} + panicked state"
+            )
+
+        # Rule 4b: Panicked state alone with moderate trust → STEP_UP minimum
+        if cognitive_state == "panicked" and base_action == "ALLOW":
+            base_action = "STEP_UP"
+            escalation_factors.append(
+                "Panicked cognitive state requires verification"
+            )
+
+        # Rule 4c: Distressed state with declining trust → STEP_UP
+        if cognitive_state == "distressed" and trust_velocity < -0.01 and base_action == "ALLOW":
+            base_action = "STEP_UP"
+            escalation_factors.append(
+                "Distressed + declining trust — proactive verification"
             )
 
         # Rule 5: High-value + distressed → STEP_UP minimum
@@ -79,6 +107,19 @@ class DecisionService:
             )
 
         confidence = self._compute_confidence(trust_score, base_action)
+        
+        # ─── HYSTERESIS: prevent rapid oscillation at threshold boundaries ──
+        # If previously STEP_UP or BLOCK, require higher trust to recover
+        if self._previous_decision in ("STEP_UP", "BLOCK") and base_action == "ALLOW":
+            if trust_score < self.HYSTERESIS_RECOVER:
+                base_action = "STEP_UP"
+                escalation_factors.append(
+                    f"Hysteresis: recovering from {self._previous_decision} (need {self.HYSTERESIS_RECOVER:.0%})"
+                )
+                confidence = self._compute_confidence(trust_score, base_action)
+        
+        self._previous_decision = base_action
+        
         explanation = self._generate_explanation(
             trust_score, trust_velocity, drift_detected, drift_severity,
             cognitive_state, transaction_amount, base_action
@@ -112,11 +153,11 @@ class DecisionService:
         if action == "ALLOW":
             return min(1.0, (trust_score - self.THRESHOLD_ALLOW) / 0.20)
         elif action == "BLOCK":
-            return min(1.0, (self.THRESHOLD_BLOCK - trust_score) / 0.25)
+            return min(1.0, (self.THRESHOLD_BLOCK - trust_score) / 0.20)
         else:
             dist_allow = self.THRESHOLD_ALLOW - trust_score
             dist_block = trust_score - self.THRESHOLD_BLOCK
-            return min(1.0, min(dist_allow, dist_block) / 0.15)
+            return min(1.0, min(dist_allow, dist_block) / 0.14)
 
     def _build_reasons(self, trust_score, velocity, drift_detected, cognitive_state, escalations) -> List[str]:
         reasons = []

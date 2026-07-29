@@ -67,7 +67,7 @@ export const DecisionPanel: React.FC<DecisionPanelProps> = ({
               {reasons.slice(0, 3).map((r, i) => (
                 <span key={i} style={{
                   fontSize: 8, padding: '2px 7px', borderRadius: 4,
-                  background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.4)',
+                  background: 'var(--accent-dim)', color: '#5b8cc7',
                   fontFamily: 'JetBrains Mono',
                 }}>
                   {r}

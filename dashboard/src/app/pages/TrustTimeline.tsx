@@ -105,7 +105,7 @@ const AICardComponent: React.FC<{ card: AICard }> = ({ card }) => {
   const icons: Record<string, React.ReactNode> = { shield: <Shield size={16} color="#10B981" />, brain: <Brain size={16} color="#8B5CF6" />, target: <Target size={16} color="#EF4444" />, activity: <Activity size={16} color="#3B82F6" /> }
 
   return (
-    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-light)', borderRadius: 12, overflow: 'hidden', marginBottom: 10 }}>
+    <div style={{ background: 'var(--accent-dim)', border: '1px solid var(--border-light)', borderRadius: 12, overflow: 'hidden', marginBottom: 10 }}>
       <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', cursor: 'pointer' }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: `${sevColor}10`, border: `1px solid ${sevColor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {icons[card.icon] || <Shield size={16} color={sevColor} />}
@@ -131,7 +131,7 @@ const AICardComponent: React.FC<{ card: AICard }> = ({ card }) => {
                     {card.factors.map(f => (
                       <div key={f.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                         <span style={{ fontSize: 9, color: 'var(--text-sub)', width: 100, flexShrink: 0 }}>{f.label}</span>
-                        <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 99, overflow: 'hidden' }}>
+                        <div style={{ flex: 1, height: 4, background: 'var(--accent-dim)', borderRadius: 99, overflow: 'hidden' }}>
                           <div style={{ height: '100%', width: `${f.value}%`, background: f.color, borderRadius: 99 }} />
                         </div>
                         <span style={{ fontSize: 10, fontWeight: 700, color: f.color, width: 28, textAlign: 'right', fontFamily: 'Space Grotesk' }}>{f.value}%</span>
@@ -197,11 +197,11 @@ const TrustTimeline: React.FC = () => {
   const chartOptions: Highcharts.Options = {
     chart: { type: 'area', backgroundColor: '#000000', height: 420, margin: [20, 20, 40, 50], style: { borderRadius: 14 } },
     title: undefined,
-    xAxis: { visible: false, crosshair: { width: 1, color: 'rgba(255,255,255,0.15)' } },
+    xAxis: { visible: false, crosshair: { width: 1, color: 'var(--text-muted)' } },
     yAxis: {
       title: { text: '' }, min: 0, max: 100,
       gridLineWidth: 0,
-      labels: { style: { color: '#6b7280', fontSize: '10px', fontFamily: 'JetBrains Mono' } },
+      labels: { style: { color: 'var(--text-muted)', fontSize: '10px', fontFamily: 'JetBrains Mono' } },
       plotLines: [
         { value: 85, color: 'rgba(16,185,129,0.2)', width: 1, dashStyle: 'Dash' as any, label: { text: 'ALLOW', align: 'right' as any, style: { color: 'rgba(16,185,129,0.5)', fontSize: '8px', fontFamily: 'JetBrains Mono' } } },
         { value: 60, color: 'rgba(245,158,11,0.2)', width: 1, dashStyle: 'Dash' as any, label: { text: 'STEP-UP', align: 'right' as any, style: { color: 'rgba(245,158,11,0.5)', fontSize: '8px', fontFamily: 'JetBrains Mono' } } },
@@ -253,7 +253,7 @@ const TrustTimeline: React.FC = () => {
         </div>
 
         {/* Main Chart — full width, maximum height */}
-        <div style={{ background: '#000000', borderRadius: 16, padding: '18px 20px', border: '1px solid rgba(255,255,255,0.06)', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{ background: '#000000', borderRadius: 16, padding: '18px 20px', border: '1px solid var(--border-light)', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {/* Chart active metric badge */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: trustColor, boxShadow: `0 0 10px ${trustColor}80` }} />
@@ -267,7 +267,7 @@ const TrustTimeline: React.FC = () => {
             </div>
           ) : (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ fontSize: 12, color: '#6b7280', fontFamily: 'JetBrains Mono' }}>Waiting for data stream...</p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>Waiting for data stream...</p>
             </div>
           )}
         </div>
@@ -409,7 +409,7 @@ const TrustTimeline: React.FC = () => {
                                 {card.factors.map(f => (
                                   <div key={f.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                                     <span style={{ fontSize: 9, color: 'var(--text-sub)', width: 100, flexShrink: 0 }}>{f.label}</span>
-                                    <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 99, overflow: 'hidden' }}>
+                                    <div style={{ flex: 1, height: 4, background: 'var(--accent-dim)', borderRadius: 99, overflow: 'hidden' }}>
                                       <div style={{ height: '100%', width: `${f.value}%`, background: f.color, borderRadius: 99 }} />
                                     </div>
                                     <span style={{ fontSize: 10, fontWeight: 700, color: f.color, width: 28, textAlign: 'right', fontFamily: 'Space Grotesk' }}>{f.value}%</span>
@@ -471,7 +471,7 @@ const TrustTimeline: React.FC = () => {
                     onBlur={e => (e.currentTarget.style.borderColor = 'var(--border-light)')}
                   />
                   <button onClick={handleSend} disabled={!input.trim()}
-                    style={{ position: 'absolute', right: 8, bottom: 10, background: input.trim() ? '#8B5CF6' : 'var(--border-light)', color: 'white', border: 'none', borderRadius: 6, padding: '6px 8px', cursor: input.trim() ? 'pointer' : 'not-allowed', display: 'flex', transition: 'background 0.15s' }}>
+                    style={{ position: 'absolute', right: 8, bottom: 10, background: input.trim() ? '#8B5CF6' : 'var(--border-light)', color: 'var(--text-main)', border: 'none', borderRadius: 6, padding: '6px 8px', cursor: input.trim() ? 'pointer' : 'not-allowed', display: 'flex', transition: 'background 0.15s' }}>
                     <Send size={13} />
                   </button>
                 </div>
@@ -531,7 +531,7 @@ const TrustTimeline: React.FC = () => {
                   </span>
                   <span style={{ fontSize: 20, fontWeight: 700, color: '#10B981', fontFamily: 'Space Grotesk' }}>98/100</span>
                 </div>
-                <div style={{ height: 6, background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ height: 6, background: 'var(--accent-dim)', borderRadius: 3, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: '98%', background: '#10B981', borderRadius: 3 }} />
                 </div>
               </div>

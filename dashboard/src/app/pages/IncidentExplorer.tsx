@@ -91,7 +91,7 @@ const IncidentExplorer: React.FC = () => {
     yAxis: { title: { text: '' }, min: 0, max: 100, gridLineColor: 'rgba(255,255,255,0.03)', labels: { style: { color: '#475569', fontSize: '8px' } } },
     legend: { enabled: false },
     credits: { enabled: false },
-    tooltip: { backgroundColor: '#1E293B', borderColor: '#334155', style: { color: '#E2E8F0', fontSize: '9px' } },
+    tooltip: { backgroundColor: '#1E293B', borderColor: '#334155', style: { color: 'var(--text-main)', fontSize: '9px' } },
     plotOptions: { spline: { marker: { enabled: false }, lineWidth: 2.5, animation: { duration: 800 } } },
     series: [{ type: 'spline' as any, data: throughputData, color: '#8B5CF6', name: 'Trust' }],
   }
@@ -186,7 +186,7 @@ const IncidentExplorer: React.FC = () => {
             {processingMetrics.map(m => (
               <div key={m.label} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <span style={{ fontSize: 10, color: 'var(--text-sub)', width: 120, flexShrink: 0 }}>{m.label}</span>
-                <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.04)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{ flex: 1, height: 6, background: 'var(--accent-dim)', borderRadius: 99, overflow: 'hidden' }}>
                   <motion.div animate={{ width: `${m.value}%` }} transition={{ duration: 0.6 }} style={{ height: '100%', background: m.color, borderRadius: 99 }} />
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 700, color: m.color, fontFamily: 'Space Grotesk', width: 32, textAlign: 'right' }}>{m.value}%</span>
@@ -205,11 +205,11 @@ const IncidentExplorer: React.FC = () => {
             chart: { polar: true, type: 'area', backgroundColor: 'transparent', height: 220, margin: [10, 10, 10, 10] },
             title: undefined,
             pane: { size: '85%' },
-            xAxis: { categories: ['Similarity', 'Stability', 'Drift Resist.', 'Anti-Fraud', 'Entropy'], tickmarkPlacement: 'on', lineWidth: 0, labels: { style: { color: '#64748B', fontSize: '9px' } }, gridLineColor: 'rgba(255,255,255,0.05)' },
+            xAxis: { categories: ['Similarity', 'Stability', 'Drift Resist.', 'Anti-Fraud', 'Entropy'], tickmarkPlacement: 'on', lineWidth: 0, labels: { style: { color: 'var(--text-muted)', fontSize: '9px' } }, gridLineColor: 'rgba(255,255,255,0.05)' },
             yAxis: { gridLineInterpolation: 'polygon', lineWidth: 0, min: 0, max: 100, labels: { enabled: false }, gridLineColor: 'rgba(255,255,255,0.04)' },
             legend: { enabled: false },
             credits: { enabled: false },
-            tooltip: { shared: true, backgroundColor: '#1E293B', borderColor: '#334155', style: { color: '#E2E8F0', fontSize: '9px' }, pointFormat: '<span style="color:{series.color}">{series.name}: <b>{point.y:.0f}%</b></span><br/>' },
+            tooltip: { shared: true, backgroundColor: '#1E293B', borderColor: '#334155', style: { color: 'var(--text-main)', fontSize: '9px' }, pointFormat: '<span style="color:{series.color}">{series.name}: <b>{point.y:.0f}%</b></span><br/>' },
             series: [
               { type: 'area' as any, name: 'Current', data: [Math.round(similarity * 100), Math.round(cognitiveStability * 100), driftDetected ? 20 : 90, Math.round((1 - fraudProbability) * 100), Math.round(Math.min(entropy * 150, 100))], color: '#10B981', fillOpacity: 0.15, lineWidth: 2, marker: { enabled: true, radius: 3 } },
               { type: 'area' as any, name: 'Threshold', data: [85, 70, 50, 60, 50], color: '#F59E0B', fillOpacity: 0.05, lineWidth: 1, dashStyle: 'ShortDash' as any, marker: { enabled: false } },
@@ -223,12 +223,12 @@ const IncidentExplorer: React.FC = () => {
           <HighchartsReact highcharts={Highcharts} options={{
             chart: { type: 'bar', backgroundColor: 'transparent', height: 220, margin: [10, 30, 30, 90] },
             title: undefined,
-            xAxis: { categories: ['Coercion', 'Takeover', 'Anomaly', 'Robotic'], labels: { style: { color: '#94A3B8', fontSize: '10px', fontFamily: 'Space Grotesk' } }, gridLineWidth: 0, lineWidth: 0 },
+            xAxis: { categories: ['Coercion', 'Takeover', 'Anomaly', 'Robotic'], labels: { style: { color: 'var(--text-muted)', fontSize: '10px', fontFamily: 'Space Grotesk' } }, gridLineWidth: 0, lineWidth: 0 },
             yAxis: { min: 0, max: 100, title: { text: '' }, gridLineColor: 'rgba(255,255,255,0.03)', labels: { style: { color: '#475569', fontSize: '8px' } } },
             legend: { enabled: false },
             credits: { enabled: false },
-            tooltip: { backgroundColor: '#1E293B', borderColor: '#334155', style: { color: '#E2E8F0', fontSize: '9px' }, valueSuffix: '%' },
-            plotOptions: { bar: { borderRadius: 4, borderWidth: 0, dataLabels: { enabled: true, format: '{y}%', style: { color: '#94A3B8', fontSize: '9px', fontWeight: '700', textOutline: 'none' } } } },
+            tooltip: { backgroundColor: '#1E293B', borderColor: '#334155', style: { color: 'var(--text-main)', fontSize: '9px' }, valueSuffix: '%' },
+            plotOptions: { bar: { borderRadius: 4, borderWidth: 0, dataLabels: { enabled: true, format: '{y}%', style: { color: 'var(--text-muted)', fontSize: '9px', fontWeight: '700', textOutline: 'none' } } } },
             series: [{
               type: 'bar' as any,
               name: 'Probability',

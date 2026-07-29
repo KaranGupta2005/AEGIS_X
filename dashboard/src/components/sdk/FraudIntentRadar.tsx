@@ -46,7 +46,7 @@ export const FraudIntentRadar: React.FC<FraudIntentRadarProps> = ({
               background: 'rgba(8,12,20,0.95)', border: `1px solid ${radarColor}30`,
               borderRadius: 8, fontSize: 10, fontFamily: 'Space Grotesk',
             }}
-            labelStyle={{ color: 'rgba(255,255,255,0.6)' }}
+            labelStyle={{ color: '#93b4e4' }}
             itemStyle={{ color: radarColor }}
             formatter={(v: number) => [`${v}%`, '']}
           />

@@ -14,7 +14,7 @@ const MiniTrustChart = () => (
       </linearGradient>
     </defs>
     <path d="M0,30 C40,28 80,25 120,22 C160,19 200,18 240,20 C280,22 320,25 380,30 L380,90 C320,95 280,98 240,100 C200,102 160,103 120,100 C80,98 40,95 0,90 Z" fill="url(#areaGradA)" />
-    <polyline points="0,72 40,68 80,62 120,58 160,55 200,52 240,50 280,48 320,46 380,44" stroke="rgba(255,255,255,0.8)" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+    <polyline points="0,72 40,68 80,62 120,58 160,55 200,52 240,50 280,48 320,46 380,44" stroke="rgba(0,0,0,0.8)" strokeWidth="2.5" fill="none" strokeLinecap="round" />
     <line x1="200" y1="0" x2="200" y2="110" stroke="#EF4444" strokeWidth="1.5" strokeDasharray="4,3" opacity="0.8" />
     <rect x="182" y="2" width="48" height="14" rx="3" fill="#EF4444" opacity="0.9" />
     <text x="206" y="13" fill="white" fontSize="8" fontFamily="JetBrains Mono" textAnchor="middle" fontWeight="600">ATTACK</text>
@@ -36,17 +36,17 @@ const MiniSparkline = () => (
 )
 
 export const Card1 = () => (
-  <div style={{ padding: '28px', height: '100%', display: 'flex', flexDirection: 'column', color: 'white', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}>
+  <div style={{ padding: '28px', height: '100%', display: 'flex', flexDirection: 'column', color: '#111827', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', boxShadow: '0 0 8px rgba(16,185,129,0.8)' }} />
       <span style={{ fontSize: '10px', letterSpacing: '0.12em', color: '#10B981', textTransform: 'uppercase', fontWeight: 600, fontFamily: 'JetBrains Mono' }}>Continuous Trust Engine</span>
     </div>
-    <h3 style={{ margin: '0 0 16px 0', fontSize: '22px', fontWeight: 700, color: '#F0F0F8', fontFamily: 'Space Grotesk, sans-serif', lineHeight: '1.2' }}>
+    <h3 style={{ margin: '0 0 16px 0', fontSize: '22px', fontWeight: 700, color: '#111827', fontFamily: 'Space Grotesk, sans-serif', lineHeight: '1.2' }}>
       Real-Time Trust<br />Scoring
     </h3>
-    <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: '10px', padding: '12px 8px 4px', border: '1px solid rgba(255,255,255,0.07)' }}>
+    <div style={{ flex: 1, background: 'rgba(0,0,0,0.04)', borderRadius: '10px', padding: '12px 8px 4px', border: '1px solid rgba(0,0,0,0.07)' }}>
       <MiniTrustChart />
-      <div style={{ display: 'flex', justifyContent: 'space-around', padding: '8px 4px 0', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-around', padding: '8px 4px 0', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '9px', color: 'rgba(16,185,129,0.8)', marginBottom: '2px', fontFamily: 'JetBrains Mono' }}>ALLOW</div>
           <div style={{ fontSize: '13px', color: '#6EE7B7', fontWeight: 600, fontFamily: 'JetBrains Mono' }}>T &gt; 0.85</div>
@@ -66,33 +66,33 @@ export const Card1 = () => (
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981', boxShadow: '0 0 6px rgba(16,185,129,0.6)' }} />
         <span style={{ fontSize: '12px', color: '#10B981', fontWeight: 600, fontFamily: 'JetBrains Mono' }}>Trust Score: 95/100</span>
       </div>
-      <span style={{ fontSize: '10px', color: '#6B7280', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: '20px', border: '1px solid rgba(16,185,129,0.2)', fontFamily: 'JetBrains Mono' }}>ALLOW</span>
+      <span style={{ fontSize: '10px', color: 'var(--text-muted)', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: '20px', border: '1px solid rgba(16,185,129,0.2)', fontFamily: 'JetBrains Mono' }}>ALLOW</span>
     </div>
   </div>
 )
 
 export const Card2 = () => (
-  <div style={{ padding: '28px', height: '100%', display: 'flex', flexDirection: 'column', color: 'white', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}>
+  <div style={{ padding: '28px', height: '100%', display: 'flex', flexDirection: 'column', color: '#111827', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3B82F6', boxShadow: '0 0 8px rgba(59,130,246,0.8)' }} />
       <span style={{ fontSize: '10px', letterSpacing: '0.12em', color: '#3B82F6', textTransform: 'uppercase', fontWeight: 600, fontFamily: 'JetBrains Mono' }}>Cognitive State Machine</span>
     </div>
-    <h3 style={{ margin: '0 0 16px 0', fontSize: '22px', fontWeight: 700, color: '#F0F0F8', fontFamily: 'Space Grotesk, sans-serif', lineHeight: '1.2' }}>
+    <h3 style={{ margin: '0 0 16px 0', fontSize: '22px', fontWeight: 700, color: '#111827', fontFamily: 'Space Grotesk, sans-serif', lineHeight: '1.2' }}>
       AI-Powered State<br />Classification
     </h3>
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '10px', padding: '12px 14px', border: '1px solid rgba(255,255,255,0.07)' }}>
+      <div style={{ background: 'rgba(0,0,0,0.04)', borderRadius: '10px', padding: '12px 14px', border: '1px solid rgba(0,0,0,0.07)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <span style={{ fontSize: '12px', color: '#E8E8F5', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{ fontSize: '12px', color: '#111827', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
             <Brain size={12} color="#3B82F6" /> State: PANICKED
           </span>
           <span style={{ fontSize: '10px', color: '#EF4444', background: 'rgba(239,68,68,0.12)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'JetBrains Mono' }}>0.35</span>
         </div>
-        <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8B8BA8', lineHeight: '1.5' }}>
-          <strong style={{ color: '#B0B0C8' }}>Signal:</strong> Elevated hesitation, high correction rate, motor control degradation.
+        <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#4B5563', lineHeight: '1.5' }}>
+          <strong style={{ color: '#111827' }}>Signal:</strong> Elevated hesitation, high correction rate, motor control degradation.
         </p>
         <div style={{ borderLeft: '2px solid #EF4444', paddingLeft: '8px' }}>
-          <p style={{ margin: 0, fontSize: '11px', color: '#8B8BA8' }}>
+          <p style={{ margin: 0, fontSize: '11px', color: '#4B5563' }}>
             <strong style={{ color: '#EF4444' }}>Action:</strong> Potential social engineering. Block transaction.
           </p>
         </div>
@@ -108,12 +108,12 @@ export const Card2 = () => (
 )
 
 export const Card3 = () => (
-  <div style={{ padding: '28px', height: '100%', display: 'flex', flexDirection: 'column', color: 'white', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}>
+  <div style={{ padding: '28px', height: '100%', display: 'flex', flexDirection: 'column', color: '#111827', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#F59E0B', boxShadow: '0 0 8px rgba(245,158,11,0.8)' }} />
       <span style={{ fontSize: '10px', letterSpacing: '0.12em', color: '#F59E0B', textTransform: 'uppercase', fontWeight: 600, fontFamily: 'JetBrains Mono' }}>CUSUM Drift Detector</span>
     </div>
-    <h3 style={{ margin: '0 0 16px 0', fontSize: '22px', fontWeight: 700, color: '#F0F0F8', fontFamily: 'Space Grotesk, sans-serif', lineHeight: '1.2' }}>
+    <h3 style={{ margin: '0 0 16px 0', fontSize: '22px', fontWeight: 700, color: '#111827', fontFamily: 'Space Grotesk, sans-serif', lineHeight: '1.2' }}>
       Change-Point<br />Detection
     </h3>
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -124,7 +124,7 @@ export const Card3 = () => (
           </span>
           <span style={{ fontSize: '10px', color: '#F59E0B', background: 'rgba(245,158,11,0.15)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'JetBrains Mono' }}>0.42</span>
         </div>
-        <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#D0C0A0', lineHeight: '1.4' }}>CUSUM threshold: <strong style={{ color: '#EF4444' }}>EXCEEDED</strong>. Progressive behavioral deviation over 12 steps.</p>
+        <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#4B5563', lineHeight: '1.4' }}>CUSUM threshold: <strong style={{ color: '#EF4444' }}>EXCEEDED</strong>. Progressive behavioral deviation over 12 steps.</p>
         <p style={{ margin: 0, fontSize: '11px', color: '#9B7A50' }}>Pattern: Gradual account takeover signature.</p>
       </div>
       <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -137,12 +137,12 @@ export const Card3 = () => (
 )
 
 export const Card4 = () => (
-  <div style={{ padding: '28px', height: '100%', display: 'flex', flexDirection: 'column', color: 'white', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}>
+  <div style={{ padding: '28px', height: '100%', display: 'flex', flexDirection: 'column', color: '#111827', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', boxShadow: '0 0 8px rgba(16,185,129,0.8)' }} />
       <span style={{ fontSize: '10px', letterSpacing: '0.12em', color: '#10B981', textTransform: 'uppercase', fontWeight: 600, fontFamily: 'JetBrains Mono' }}>Security Architecture</span>
     </div>
-    <h3 style={{ margin: '0 0 18px 0', fontSize: '22px', fontWeight: 700, color: '#F0F0F8', fontFamily: 'Space Grotesk, sans-serif', lineHeight: '1.2' }}>
+    <h3 style={{ margin: '0 0 18px 0', fontSize: '22px', fontWeight: 700, color: '#111827', fontFamily: 'Space Grotesk, sans-serif', lineHeight: '1.2' }}>
       Bank-Grade<br />Trust Infrastructure
     </h3>
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -151,11 +151,11 @@ export const Card4 = () => (
         { icon: <Zap size={16} />, label: 'Sub-100ms Latency', desc: 'Full pipeline in one SDK heartbeat', color: '#3B82F6' },
         { icon: <Lock size={16} />, label: 'Zero Raw Data Exposure', desc: 'Only embeddings leave the device', color: '#8B5CF6' },
       ].map((g, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '10px 12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', background: 'rgba(0,0,0,0.03)', borderRadius: '8px', padding: '10px 12px', border: '1px solid rgba(0,0,0,0.06)' }}>
           <span style={{ color: g.color, flexShrink: 0, marginTop: '1px' }}>{g.icon}</span>
           <div>
             <div style={{ fontSize: '12px', fontWeight: 600, color: g.color, marginBottom: '2px', fontFamily: 'JetBrains Mono' }}>{g.label}</div>
-            <div style={{ fontSize: '11px', color: '#6B7280' }}>{g.desc}</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{g.desc}</div>
           </div>
           <div style={{ marginLeft: 'auto', width: '8px', height: '8px', borderRadius: '50%', background: g.color, boxShadow: `0 0 6px ${g.color}`, flexShrink: 0, marginTop: '4px' }} />
         </div>
@@ -169,16 +169,16 @@ export const Card4 = () => (
 )
 
 export const Card5 = () => (
-  <div style={{ padding: '28px', height: '100%', display: 'flex', flexDirection: 'column', color: 'white', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}>
+  <div style={{ padding: '28px', height: '100%', display: 'flex', flexDirection: 'column', color: '#111827', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#8B5CF6', boxShadow: '0 0 8px rgba(139,92,246,0.8)' }} />
       <span style={{ fontSize: '10px', letterSpacing: '0.12em', color: '#8B5CF6', textTransform: 'uppercase', fontWeight: 600, fontFamily: 'JetBrains Mono' }}>Behavioral Embedding</span>
     </div>
-    <h3 style={{ margin: '0 0 14px 0', fontSize: '22px', fontWeight: 700, color: '#F0F0F8', fontFamily: 'Space Grotesk, sans-serif', lineHeight: '1.2' }}>
+    <h3 style={{ margin: '0 0 14px 0', fontSize: '22px', fontWeight: 700, color: '#111827', fontFamily: 'Space Grotesk, sans-serif', lineHeight: '1.2' }}>
       384-Dimensional<br />Identity Space
     </h3>
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '16px' }}>
-      <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '10px', padding: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ background: 'rgba(0,0,0,0.03)', borderRadius: '10px', padding: '16px', border: '1px solid rgba(0,0,0,0.06)' }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', gap: '4px' }}>
           {Array.from({ length: 20 }).map((_, i) => (
             <div key={i} style={{ flex: 1, height: '3px', borderRadius: '2px', background: '#10B981', opacity: 1 - (i / 22) }} />
@@ -191,12 +191,12 @@ export const Card5 = () => (
           <div style={{ position: 'absolute', bottom: '25%', left: 0, right: 0, height: '2px', background: 'linear-gradient(to right, #10B981 30%, rgba(16,185,129,0.1) 100%)' }} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
-          <span style={{ fontSize: '9px', color: '#6B7280', fontFamily: 'JetBrains Mono' }}>BASELINE</span>
-          <span style={{ fontSize: '9px', color: '#6B7280', fontFamily: 'JetBrains Mono' }}>CURRENT SESSION →</span>
+          <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>BASELINE</span>
+          <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>CURRENT SESSION →</span>
         </div>
       </div>
       <blockquote style={{ margin: 0, padding: '10px 14px', borderLeft: '2px solid #10B981', background: 'rgba(16,185,129,0.04)', borderRadius: '0 8px 8px 0' }}>
-        <p style={{ margin: 0, fontSize: '11px', color: '#9BA8B8', lineHeight: '1.6', fontStyle: 'italic' }}>
+        <p style={{ margin: 0, fontSize: '11px', color: '#4B5563', lineHeight: '1.6', fontStyle: 'italic' }}>
           "Cosine similarity between behavioral embeddings detects identity drift — even when individual metrics appear normal."
         </p>
       </blockquote>

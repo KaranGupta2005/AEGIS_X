@@ -15,7 +15,7 @@ const TrustDonut: React.FC = () => {
     plotOptions: {
       pie: {
         borderWidth: 2,
-        borderColor: '#0A0D14',
+        borderColor: '#ffffff',
         shadow: false,
       }
     },
@@ -28,14 +28,14 @@ const TrustDonut: React.FC = () => {
       dataLabels: [{
         enabled: true,
         format: '{point.name}',
-        style: { color: '#94A3B8', fontSize: '9px', fontFamily: 'JetBrains Mono', fontWeight: '500', textOutline: 'none' },
+        style: { color: 'var(--text-muted)', fontSize: '9px', fontFamily: 'JetBrains Mono', fontWeight: '500', textOutline: 'none' },
         distance: 12,
       }],
       data: [
-        { name: 'Behavioral', y: 40, color: '#10B981' },
-        { name: 'Device', y: 20, color: '#3B82F6' },
-        { name: 'Transaction', y: 20, color: '#F59E0B' },
-        { name: 'Cognitive', y: 20, color: '#8B5CF6' },
+        { name: 'Behavioral', y: 40, color: '#06b6d4' },
+        { name: 'Device', y: 20, color: '#3b82f6' },
+        { name: 'Transaction', y: 20, color: '#818cf8' },
+        { name: 'Cognitive', y: 20, color: '#1e3a8a' },
       ],
     }],
   }
@@ -43,7 +43,7 @@ const TrustDonut: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <HighchartsReact highcharts={Highcharts} options={options} />
-      <div style={{ fontSize: 9, color: '#64748B', fontFamily: 'JetBrains Mono', letterSpacing: '0.1em', marginTop: -8 }}>
+      <div style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', letterSpacing: '0.1em', marginTop: -8 }}>
         T(t) WEIGHT DISTRIBUTION
       </div>
     </div>

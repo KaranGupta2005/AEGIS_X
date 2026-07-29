@@ -14,11 +14,25 @@ build/
 # Data (raw only — synthetic is committed)
 data/raw/
 
-# ML model artifacts (too large for git — retrained on deploy)
+# ML model artifacts (too large for git — hosted on Hugging Face)
 models/cognitive/cognitive_rf.pkl
+models/cognitive/cognitive_hgb.pkl
 models/**/*.pkl
 models/**/*.pt
 models/**/*.onnx
+models/**/*.zip
+models/**/*.task
+models/**/*.ckpt
+models/insightface/
+models/mediapipe/
+models/speechbrain_ecapa/
+
+# Large synthetic datasets (regenerated via scripts/)
+data/synthetic/*.csv
+
+# User database (generated at runtime)
+data/aegisx_users.db
+data/users.json
 
 # Embeddings (generated at runtime)
 embeddings/baselines/
@@ -40,3 +54,6 @@ dashboard/dist/
 
 # Logs
 logs/
+
+# Biometric profile data (sensitive — never commit)
+data/profiles/

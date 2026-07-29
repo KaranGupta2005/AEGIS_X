@@ -44,10 +44,10 @@ const SessionReplay: React.FC = () => {
     chart: { backgroundColor: 'transparent', height: 180, margin: [10, 10, 30, 40] },
     title: undefined,
     xAxis: { visible: false },
-    yAxis: { title: { text: '' }, min: 0, max: 100, gridLineColor: 'rgba(255,255,255,0.03)', labels: { style: { color: '#475569', fontSize: '8px' } } },
-    legend: { enabled: true, itemStyle: { color: '#94A3B8', fontSize: '9px' } },
+    yAxis: { title: { text: '' }, min: 0, max: 100, gridLineColor: 'rgba(255,255,255,0.03)', labels: { style: { color: 'var(--text-sub)', fontSize: '8px' } } },
+    legend: { enabled: true, itemStyle: { color: 'var(--text-muted)', fontSize: '9px' } },
     credits: { enabled: false },
-    tooltip: { shared: true, backgroundColor: '#1E293B', borderColor: '#334155', style: { color: '#E2E8F0', fontSize: '9px' } },
+    tooltip: { shared: true, backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border-medium)', style: { color: 'var(--text-main)', fontSize: '9px' } },
     plotOptions: { column: { borderWidth: 0, borderRadius: 3 }, spline: { marker: { enabled: false }, lineWidth: 2.5 } },
     series: [
       { type: 'column' as any, name: 'Trust', data: timeline.slice(0, replayIdx + 1).map(t => t.trust), color: 'rgba(16,185,129,0.4)' },
@@ -102,9 +102,9 @@ const SessionReplay: React.FC = () => {
               { from: [450, 200], to: [540, 140], sus: fraudProbability > 0.3 },
             ].map((e, i) => (
               <line key={i} x1={e.from[0]} y1={e.from[1]} x2={e.to[0]} y2={e.to[1]}
-                stroke={isReplaying && e.sus ? '#EF4444' : e.sus ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.07)'}
+                stroke={isReplaying && e.sus ? '#EF4444' : e.sus ? 'rgba(239,68,68,0.4)' : 'var(--text-muted)'}
                 strokeWidth={isReplaying && e.sus ? 2 : e.sus ? 1.5 : 0.8}
-                strokeDasharray={e.sus ? '5 3' : undefined} />
+                strokeDasharray={e.sus ? '5 3' : undefined} opacity={e.sus ? 1 : 0.3} />
             ))}
             {/* Nodes */}
             {[
@@ -114,14 +114,14 @@ const SessionReplay: React.FC = () => {
               { cx: 150, cy: 200, r: 14, color: '#F59E0B', label: 'Bank Acct' },
               { cx: 450, cy: 200, r: 14, color: fraudProbability > 0.3 ? '#EF4444' : '#10B981', label: 'Beneficiary' },
               { cx: 300, cy: 240, r: 16, color: '#10B981', label: 'AEGIS-X' },
-              { cx: 540, cy: 140, r: 14, color: STATE_COLORS[cognitiveState] || '#94A3B8', label: cognitiveState.slice(0, 7) },
+              { cx: 540, cy: 140, r: 14, color: STATE_COLORS[cognitiveState] || 'var(--text-muted)', label: cognitiveState.slice(0, 7) },
             ].map((n, i) => (
               <g key={i}>
                 {isReplaying && n.main && <circle cx={n.cx} cy={n.cy} r={n.r + 12} fill="#EF4444" opacity={0.08} />}
                 <circle cx={n.cx} cy={n.cy} r={n.r + 3} fill="none" stroke={n.color} strokeWidth={0.8} opacity={0.3} />
                 <circle cx={n.cx} cy={n.cy} r={n.r} fill={`${n.color}1A`} stroke={n.color} strokeWidth={1.5} />
                 {fraudProbability > 0.5 && n.label === 'Beneficiary' && <circle cx={n.cx + n.r - 2} cy={n.cy - n.r + 2} r={4} fill="#EF4444" />}
-                <text x={n.cx} y={n.cy + n.r + 12} textAnchor="middle" style={{ fontFamily: 'JetBrains Mono', fontSize: 8, fill: '#6B7280' }}>{n.label}</text>
+                <text x={n.cx} y={n.cy + n.r + 12} textAnchor="middle" style={{ fontFamily: 'JetBrains Mono', fontSize: 8, fill: 'var(--text-muted)' }}>{n.label}</text>
               </g>
             ))}
           </svg>
@@ -137,13 +137,13 @@ const SessionReplay: React.FC = () => {
         <div style={{ background: 'var(--bg-card)', borderRadius: 14, border: '1px solid var(--border-light)', padding: '12px 14px', overflowY: 'auto', maxHeight: 340 }}>
           <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', fontFamily: 'JetBrains Mono', display: 'block', marginBottom: 12 }}>Event Chain</span>
           {timeline.length > 0 ? timeline.slice(0, replayIdx + 1).map((t, i) => {
-            const color = STATE_COLORS[t.cognitive_state] || '#94A3B8'
+            const color = STATE_COLORS[t.cognitive_state] || 'var(--text-muted)'
             const isActive = i === replayIdx
             const isLast = i === timeline.slice(0, replayIdx + 1).length - 1
             return (
               <div key={i} style={{ display: 'flex', gap: 10, position: 'relative', paddingBottom: isLast ? 0 : 20, paddingLeft: 4 }}>
                 {!isLast && (
-                  <div style={{ position: 'absolute', left: 8, top: 14, bottom: 0, width: 2, background: `linear-gradient(to bottom, ${color}, ${STATE_COLORS[timeline[Math.min(i + 1, timeline.length - 1)]?.cognitive_state] || '#94A3B8'})` }} />
+                  <div style={{ position: 'absolute', left: 8, top: 14, bottom: 0, width: 2, background: `linear-gradient(to bottom, ${color}, ${STATE_COLORS[timeline[Math.min(i + 1, timeline.length - 1)]?.cognitive_state] || 'var(--text-muted)'})` }} />
                 )}
                 <div style={{ width: 12, height: 12, borderRadius: '50%', background: color, flexShrink: 0, marginTop: 2, boxShadow: isActive ? `0 0 10px ${color}` : `0 0 4px ${color}60`, border: isActive ? '2px solid white' : 'none', zIndex: 1 }} />
                 <div>
@@ -165,33 +165,24 @@ const SessionReplay: React.FC = () => {
         {/* Current State — Sleek Gauge + Spline */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 14, border: '1px solid var(--border-light)', padding: '12px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <span style={{ fontSize: 7, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.15em', fontFamily: 'JetBrains Mono', marginBottom: 6 }}>Current State</span>
-          {/* SVG Gauge — dynamic arc based on currentTrust */}
-          <svg width={140} height={80} viewBox="0 0 140 80">
-            {/* Background track */}
-            <path d="M 15 70 A 55 55 0 0 1 125 70" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={10} strokeLinecap="round" />
-            {/* Red zone 0-40% */}
-            <path d="M 15 70 A 55 55 0 0 1 59 19" fill="none" stroke="rgba(239,68,68,0.2)" strokeWidth={10} strokeLinecap="round" />
-            {/* Yellow zone 40-70% */}
-            <path d="M 59 19 A 55 55 0 0 1 103 19" fill="none" stroke="rgba(245,158,11,0.2)" strokeWidth={10} strokeLinecap="round" />
-            {/* Green zone 70-100% */}
-            <path d="M 103 19 A 55 55 0 0 1 125 70" fill="none" stroke="rgba(16,185,129,0.2)" strokeWidth={10} strokeLinecap="round" />
-            {/* Dynamic value arc */}
-            {(() => {
-              const pct = Math.max(0, Math.min(100, currentTrust)) / 100
-              const angle = Math.PI * (1 - pct)
-              const ex = 70 + 55 * Math.cos(angle)
-              const ey = 70 - 55 * Math.sin(angle)
-              const large = pct > 0.5 ? 1 : 0
-              return <path d={`M 15 70 A 55 55 0 ${large} 1 ${ex.toFixed(1)} ${ey.toFixed(1)}`} fill="none" stroke={trustColor} strokeWidth={10} strokeLinecap="round" style={{ filter: `drop-shadow(0 0 6px ${trustColor}60)`, transition: 'all 0.3s' }} />
-            })()}
-            <text x={70} y={52} textAnchor="middle" fill={trustColor} fontSize={24} fontWeight={900} fontFamily="Space Grotesk">{Math.round(currentTrust)}</text>
-            <text x={70} y={70} textAnchor="middle" fill="#64748B" fontSize={8} fontFamily="JetBrains Mono" letterSpacing="0.08em">TRUST</text>
+          {/* SVG Gauge — circular progress ring */}
+          <svg width={130} height={130} viewBox="0 0 130 130">
+            {/* Background circle */}
+            <circle cx={65} cy={65} r={52} fill="none" stroke="rgba(59,130,246,0.08)" strokeWidth={10} />
+            {/* Colored arc — shows trust percentage */}
+            <circle cx={65} cy={65} r={52} fill="none" stroke={trustColor} strokeWidth={10} strokeLinecap="round"
+              strokeDasharray={`${(currentTrust / 100) * 327} 327`}
+              transform="rotate(-90 65 65)"
+              style={{ filter: `drop-shadow(0 0 6px ${trustColor}50)`, transition: 'stroke-dasharray 0.5s ease, stroke 0.3s' }} />
+            {/* Center text */}
+            <text x={65} y={60} textAnchor="middle" fill={trustColor} fontSize={28} fontWeight={900} fontFamily="Space Grotesk">{Math.round(currentTrust)}</text>
+            <text x={65} y={80} textAnchor="middle" fill="#5b8cc7" fontSize={9} fontFamily="JetBrains Mono" letterSpacing="0.1em">TRUST</text>
           </svg>
           {/* State badges */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6, width: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px', borderRadius: 6, background: `${STATE_COLORS[currentState] || '#94A3B8'}08` }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px', borderRadius: 6, background: `${STATE_COLORS[currentState] || 'var(--text-muted)'}08` }}>
               <span style={{ fontSize: 8, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>Cognitive</span>
-              <span style={{ fontSize: 9, fontWeight: 800, color: STATE_COLORS[currentState] || '#94A3B8', fontFamily: 'Space Grotesk' }}>{currentState.toUpperCase()}</span>
+              <span style={{ fontSize: 9, fontWeight: 800, color: STATE_COLORS[currentState] || 'var(--text-muted)', fontFamily: 'Space Grotesk' }}>{currentState.toUpperCase()}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px', borderRadius: 6, background: decision === 'ALLOW' ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)' }}>
               <span style={{ fontSize: 8, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>Decision</span>
@@ -290,7 +281,7 @@ const SessionReplay: React.FC = () => {
             <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Replay Progress</span>
             <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>{replayIdx + 1} / {timeline.length} events</span>
           </div>
-          <div style={{ height: 6, background: 'rgba(255,255,255,0.04)', borderRadius: 99, overflow: 'hidden' }}>
+          <div style={{ height: 6, background: 'var(--accent-dim)', borderRadius: 99, overflow: 'hidden' }}>
             <motion.div animate={{ width: `${((replayIdx + 1) / Math.max(timeline.length, 1)) * 100}%` }} transition={{ duration: 0.3 }} style={{ height: '100%', background: 'linear-gradient(to right, #10B981, #3B82F6, #8B5CF6, #EF4444)', borderRadius: 99 }} />
           </div>
         </div>

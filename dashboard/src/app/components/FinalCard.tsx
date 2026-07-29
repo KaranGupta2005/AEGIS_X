@@ -16,7 +16,7 @@ const FinalCard: React.FC = () => (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(148,163,184,0.06)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', animation: 'pulse-glow 2s infinite', color: '#10B981' }} />
-        <span style={{ fontSize: 9, fontWeight: 700, color: '#64748B', letterSpacing: '0.15em', fontFamily: 'JetBrains Mono' }}>TRUST PIPELINE VERDICT</span>
+        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.15em', fontFamily: 'JetBrains Mono' }}>TRUST PIPELINE VERDICT</span>
       </div>
       <span style={{ fontSize: 8, fontWeight: 700, color: '#EF4444', background: 'rgba(239,68,68,0.1)', padding: '3px 8px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.2)', fontFamily: 'JetBrains Mono' }}>SESSION BLOCKED</span>
     </div>
@@ -40,11 +40,11 @@ const FinalCard: React.FC = () => (
     <div style={{ padding: '0 20px 18px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
       <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', textAlign: 'center' }}>
         <p style={{ fontSize: 9, fontWeight: 800, color: '#FCA5A5', letterSpacing: '0.08em', margin: '0 0 2px', fontFamily: 'JetBrains Mono' }}>BLOCK TRANSACTION</p>
-        <p style={{ fontSize: 8, color: '#64748B', margin: 0 }}>₹2,00,000 to unknown beneficiary</p>
+        <p style={{ fontSize: 8, color: 'var(--text-muted)', margin: 0 }}>₹2,00,000 to unknown beneficiary</p>
       </div>
       <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', textAlign: 'center' }}>
         <p style={{ fontSize: 9, fontWeight: 800, color: '#6EE7B7', letterSpacing: '0.08em', margin: '0 0 2px', fontFamily: 'JetBrains Mono' }}>CONTACT CUSTOMER</p>
-        <p style={{ fontSize: 8, color: '#64748B', margin: 0 }}>Via verified phone channel</p>
+        <p style={{ fontSize: 8, color: 'var(--text-muted)', margin: 0 }}>Via verified phone channel</p>
       </div>
     </div>
   </motion.div>

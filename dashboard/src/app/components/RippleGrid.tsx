@@ -4,9 +4,10 @@ interface RippleGridProps {
   rows?: number
   cols?: number
   cellSize?: number
+  color?: string  // Base color for ripple effect
 }
 
-const RippleGrid: React.FC<RippleGridProps> = ({ rows = 12, cols = 26, cellSize = 56 }) => {
+const RippleGrid: React.FC<RippleGridProps> = ({ rows = 12, cols = 26, cellSize = 56, color = '16,185,129' }) => {
   const [ripple, setRipple] = useState<{ row: number; col: number; key: number } | null>(null)
   const cells = useMemo(() => Array.from({ length: rows * cols }, (_, i) => i), [rows, cols])
 
@@ -22,12 +23,10 @@ const RippleGrid: React.FC<RippleGridProps> = ({ rows = 12, cols = 26, cellSize 
   return (
     <div style={{
       position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0, pointerEvents: 'auto',
-      maskImage: 'radial-gradient(ellipse 100% 80% at 50% 0%, black 20%, transparent 100%)',
-      WebkitMaskImage: 'radial-gradient(ellipse 100% 80% at 50% 0%, black 20%, transparent 100%)',
     }}>
       <style>{`
-        @keyframes cellPulse {
-          0% { background: rgba(16,185,129,0.18); transform: scale(0.9); }
+        @keyframes cellPulse-${color.replace(/,/g, '')} {
+          0% { background: rgba(${color},0.22); transform: scale(0.88); }
           100% { background: transparent; transform: scale(1); }
         }
       `}</style>
@@ -50,11 +49,12 @@ const RippleGrid: React.FC<RippleGridProps> = ({ rows = 12, cols = 26, cellSize 
               key={shouldAnimate ? `${ripple.key}-${idx}` : idx}
               style={{
                 width: cellSize, height: cellSize,
-                border: '1px solid rgba(16,185,129,0.05)',
+                border: `1px solid rgba(${color},0.12)`,
+                borderRadius: 2,
                 transition: 'background 80ms',
-                animation: shouldAnimate ? `cellPulse ${120 + dist * 40}ms ${dist * 25}ms ease-out forwards` : 'none',
+                animation: shouldAnimate ? `cellPulse-${color.replace(/,/g, '')} ${120 + dist * 40}ms ${dist * 25}ms ease-out forwards` : 'none',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(16,185,129,0.06)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = `rgba(${color},0.08)` }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
             />
           )

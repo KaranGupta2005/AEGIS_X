@@ -10,13 +10,13 @@ import {
 
 function ScreenHeader({ title, subtitle, onBack }: { title: string; subtitle?: string; onBack: () => void }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-      <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 6, cursor: 'pointer', color: 'rgba(255,255,255,0.6)', display: 'flex' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--border-light)' }}>
+      <button onClick={onBack} style={{ background: 'var(--accent-dim)', border: '1px solid var(--border-light)', borderRadius: 8, padding: 6, cursor: 'pointer', color: '#93b4e4', display: 'flex' }}>
         <ArrowLeft size={13} />
       </button>
       <div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'white', fontFamily: 'Space Grotesk' }}>{title}</div>
-        {subtitle && <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono' }}>{subtitle}</div>}
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#e8f0fe', fontFamily: 'Space Grotesk' }}>{title}</div>
+        {subtitle && <div style={{ fontSize: 8, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>{subtitle}</div>}
       </div>
     </div>
   )
@@ -25,7 +25,7 @@ function ScreenHeader({ title, subtitle, onBack }: { title: string; subtitle?: s
 function PayButton({ label, onPay }: { label: string; onPay: () => void }) {
   return (
     <motion.button whileTap={{ scale: 0.97 }} onClick={onPay}
-      style={{ width: '100%', height: 46, borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#10B981,#059669)', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Space Grotesk', boxShadow: '0 4px 20px rgba(16,185,129,0.25)' }}>
+      style={{ width: '100%', height: 46, borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#10B981,#059669)', color: '#e8f0fe', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Space Grotesk', boxShadow: '0 4px 20px rgba(16,185,129,0.25)' }}>
       {label}
     </motion.button>
   )
@@ -41,15 +41,15 @@ function SuccessScreen({ title, amount, detail, onDone }: { title: string; amoun
       </motion.div>
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} style={{ textAlign: 'center', marginTop: 14 }}>
         <div style={{ fontSize: 16, fontWeight: 800, color: '#10B981', fontFamily: 'Space Grotesk' }}>{title}</div>
-        <div style={{ fontSize: 26, fontWeight: 900, color: 'white', fontFamily: 'Space Grotesk', margin: '6px 0' }}>{amount}</div>
-        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'Space Grotesk' }}>{detail}</div>
+        <div style={{ fontSize: 26, fontWeight: 900, color: '#e8f0fe', fontFamily: 'Space Grotesk', margin: '6px 0' }}>{amount}</div>
+        <div style={{ fontSize: 10, color: '#5b8cc7', fontFamily: 'Space Grotesk' }}>{detail}</div>
         <div style={{ marginTop: 10, padding: '5px 12px', borderRadius: 20, background: 'rgba(16,185,129,0.08)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
           <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#10B981' }} />
           <span style={{ fontSize: 8, color: '#10B981', fontFamily: 'JetBrains Mono' }}>AEGIS-X Verified</span>
         </div>
       </motion.div>
       <motion.button whileTap={{ scale: 0.97 }} onClick={onDone} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
-        style={{ marginTop: 20, padding: '10px 24px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.7)', fontSize: 11, cursor: 'pointer', fontFamily: 'Space Grotesk' }}>
+        style={{ marginTop: 20, padding: '10px 24px', borderRadius: 10, border: '1px solid var(--border-medium)', background: 'var(--accent-dim)', color: '#93b4e4', fontSize: 11, cursor: 'pointer', fontFamily: 'Space Grotesk' }}>
         Back to Home
       </motion.button>
     </div>
@@ -62,8 +62,8 @@ function ProcessingScreen() {
       <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
         <Loader size={28} color="#10B981" />
       </motion.div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: 'white', fontFamily: 'Space Grotesk' }}>Processing...</div>
-      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono' }}>AEGIS-X verifying</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: '#e8f0fe', fontFamily: 'Space Grotesk' }}>Processing...</div>
+      <div style={{ fontSize: 8, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>AEGIS-X verifying</div>
     </div>
   )
 }
@@ -112,7 +112,7 @@ export function QRScanScreen({ onBack }: { onBack: () => void }) {
                   style={{ position: 'absolute', left: 10, right: 10, height: 2, background: 'linear-gradient(90deg,transparent,#10B981,transparent)', borderRadius: 99 }} />
               </div>
             </div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'Space Grotesk', marginBottom: 20, textAlign: 'center' }}>
+            <div style={{ fontSize: 10, color: '#5b8cc7', fontFamily: 'Space Grotesk', marginBottom: 20, textAlign: 'center' }}>
               Align QR code within the frame
             </div>
             <motion.button whileTap={{ scale: 0.97 }} onClick={() => setStep('preview')}
@@ -123,17 +123,17 @@ export function QRScanScreen({ onBack }: { onBack: () => void }) {
         )}
         {step === 'preview' && (
           <div style={{ width: '100%' }}>
-            <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 14, border: '1px solid rgba(255,255,255,0.06)', padding: '16px', marginBottom: 14 }}>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', marginBottom: 8 }}>MERCHANT DETAILS</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'white', fontFamily: 'Space Grotesk' }}>{mockName}</div>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', marginTop: 2 }}>{mockUpi}</div>
+            <div style={{ background: 'var(--accent-dim)', borderRadius: 14, border: '1px solid var(--border-light)', padding: '16px', marginBottom: 14 }}>
+              <div style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginBottom: 8 }}>MERCHANT DETAILS</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#e8f0fe', fontFamily: 'Space Grotesk' }}>{mockName}</div>
+              <div style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginTop: 2 }}>{mockUpi}</div>
             </div>
             <div style={{ fontSize: 32, fontWeight: 900, color: amount ? 'white' : 'rgba(255,255,255,0.15)', fontFamily: 'Space Grotesk', textAlign: 'center', marginBottom: 12 }}>
               ₹{amount ? Number(amount).toLocaleString() : '0'}
             </div>
             <input value={amount} onChange={e => setAmount(e.target.value.replace(/[^0-9]/g, ''))}
               placeholder="Enter amount" autoFocus
-              style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', color: 'white', fontSize: 14, outline: 'none', textAlign: 'center', fontFamily: 'Space Grotesk', boxSizing: 'border-box', marginBottom: 12 }} />
+              style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border-medium)', background: 'var(--accent-dim)', color: '#e8f0fe', fontSize: 14, outline: 'none', textAlign: 'center', fontFamily: 'Space Grotesk', boxSizing: 'border-box', marginBottom: 12 }} />
             <PayButton label={`Pay ₹${Number(amount || 0).toLocaleString()}`} onPay={() => amount && setStep('processing')} />
           </div>
         )}
@@ -169,12 +169,12 @@ export function MobileRechargeScreen({ onBack }: { onBack: () => void }) {
         {step === 'form' && (
           <>
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', marginBottom: 6 }}>MOBILE NUMBER</div>
+              <div style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginBottom: 6 }}>MOBILE NUMBER</div>
               <input value={number} onChange={e => setNumber(e.target.value)}
-                style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', color: 'white', fontSize: 14, fontWeight: 600, outline: 'none', fontFamily: 'Space Grotesk', boxSizing: 'border-box' }} />
+                style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border-medium)', background: 'var(--accent-dim)', color: '#e8f0fe', fontSize: 14, fontWeight: 600, outline: 'none', fontFamily: 'Space Grotesk', boxSizing: 'border-box' }} />
             </div>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', marginBottom: 6 }}>OPERATOR</div>
+              <div style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginBottom: 6 }}>OPERATOR</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 {OPERATORS.map(op => (
                   <motion.button key={op} whileTap={{ scale: 0.95 }} onClick={() => setOperator(op)}
@@ -192,16 +192,16 @@ export function MobileRechargeScreen({ onBack }: { onBack: () => void }) {
         )}
         {step === 'plans' && (
           <>
-            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', marginBottom: 10 }}>{operator} PREPAID PLANS</div>
+            <div style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginBottom: 10 }}>{operator} PREPAID PLANS</div>
             {RECHARGE_PLANS.map(plan => (
               <motion.div key={plan.price} whileTap={{ scale: 0.98 }} onClick={() => setSelected(plan)}
                 style={{ padding: '12px 14px', borderRadius: 12, marginBottom: 8, cursor: 'pointer', border: `1px solid ${selected.price === plan.price ? '#8B5CF6' : plan.highlight ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.06)'}`, background: selected.price === plan.price ? 'rgba(139,92,246,0.1)' : plan.highlight ? 'rgba(139,92,246,0.04)' : 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                    <span style={{ fontSize: 16, fontWeight: 900, color: 'white', fontFamily: 'Space Grotesk' }}>₹{plan.price}</span>
-                    {plan.highlight && <span style={{ fontSize: 7, background: '#8B5CF6', color: 'white', padding: '1px 6px', borderRadius: 4, fontFamily: 'JetBrains Mono', fontWeight: 700 }}>POPULAR</span>}
+                    <span style={{ fontSize: 16, fontWeight: 900, color: '#e8f0fe', fontFamily: 'Space Grotesk' }}>₹{plan.price}</span>
+                    {plan.highlight && <span style={{ fontSize: 7, background: '#8B5CF6', color: '#e8f0fe', padding: '1px 6px', borderRadius: 4, fontFamily: 'JetBrains Mono', fontWeight: 700 }}>POPULAR</span>}
                   </div>
-                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono' }}>{plan.data} · {plan.calls} calls · {plan.validity}</div>
+                  <div style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>{plan.data} · {plan.calls} calls · {plan.validity}</div>
                 </div>
                 <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${selected.price === plan.price ? '#8B5CF6' : 'rgba(255,255,255,0.15)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {selected.price === plan.price && <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#8B5CF6' }} />}
@@ -243,9 +243,9 @@ export function ElectricityScreen({ onBack }: { onBack: () => void }) {
               </motion.div>
             ))}
             <div style={{ marginTop: 10, marginBottom: 12 }}>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', marginBottom: 6 }}>CONSUMER NUMBER</div>
+              <div style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginBottom: 6 }}>CONSUMER NUMBER</div>
               <input value={consumer} onChange={e => setConsumer(e.target.value)}
-                style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', color: 'white', fontSize: 14, fontWeight: 600, outline: 'none', fontFamily: 'Space Grotesk', boxSizing: 'border-box' }} />
+                style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border-medium)', background: 'var(--accent-dim)', color: '#e8f0fe', fontSize: 14, fontWeight: 600, outline: 'none', fontFamily: 'Space Grotesk', boxSizing: 'border-box' }} />
             </div>
             <motion.button whileTap={{ scale: 0.97 }} onClick={() => setStep('bill')}
               style={{ width: '100%', height: 44, borderRadius: 12, border: '1px solid rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.08)', color: '#F59E0B', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Space Grotesk' }}>
@@ -257,8 +257,8 @@ export function ElectricityScreen({ onBack }: { onBack: () => void }) {
           <>
             <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 14, padding: '16px', marginBottom: 14 }}>
               {[['Board', board], ['Consumer No.', consumer], ['Bill Month', 'June 2026'], ['Units Consumed', '412 kWh'], ['Due Date', '25 Jul 2026'], ['Bill Amount', `₹${billAmount.toLocaleString()}`]].map(([k, v]) => (
-                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono' }}>{k}</span>
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border-light)' }}>
+                  <span style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>{k}</span>
                   <span style={{ fontSize: 11, fontWeight: 600, color: k === 'Bill Amount' ? '#F59E0B' : 'white', fontFamily: 'Space Grotesk' }}>{v}</span>
                 </div>
               ))}
@@ -288,17 +288,17 @@ export function FASTagScreen({ onBack }: { onBack: () => void }) {
         {/* Vehicle card */}
         <div style={{ background: 'linear-gradient(135deg,#1a2a3a,#0d2035)', borderRadius: 14, padding: '16px', marginBottom: 14, border: '1px solid rgba(249,115,22,0.15)', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(249,115,22,0.06)' }} />
-          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', marginBottom: 4 }}>VEHICLE NUMBER</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: 'white', fontFamily: 'Space Grotesk', letterSpacing: 2 }}>{vehicle}</div>
-          <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', marginTop: 4 }}>Current Balance: ₹120 · NHAI FASTag</div>
+          <div style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginBottom: 4 }}>VEHICLE NUMBER</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#e8f0fe', fontFamily: 'Space Grotesk', letterSpacing: 2 }}>{vehicle}</div>
+          <div style={{ fontSize: 8, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginTop: 4 }}>Current Balance: ₹120 · NHAI FASTag</div>
         </div>
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', marginBottom: 6 }}>VEHICLE NUMBER</div>
+          <div style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginBottom: 6 }}>VEHICLE NUMBER</div>
           <input value={vehicle} onChange={e => setVehicle(e.target.value)}
-            style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', color: 'white', fontSize: 13, fontWeight: 600, outline: 'none', fontFamily: 'Space Grotesk', boxSizing: 'border-box', textTransform: 'uppercase' }} />
+            style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border-medium)', background: 'var(--accent-dim)', color: '#e8f0fe', fontSize: 13, fontWeight: 600, outline: 'none', fontFamily: 'Space Grotesk', boxSizing: 'border-box', textTransform: 'uppercase' }} />
         </div>
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', marginBottom: 6 }}>RECHARGE AMOUNT</div>
+          <div style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginBottom: 6 }}>RECHARGE AMOUNT</div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             {['200','500','1000','2000'].map(a => (
               <motion.button key={a} whileTap={{ scale: 0.95 }} onClick={() => setAmount(a)}
@@ -336,7 +336,7 @@ export function InsuranceScreen({ onBack }: { onBack: () => void }) {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <ScreenHeader title="Insurance" subtitle="Health · Life · Motor · Travel" onBack={onBack} />
       <div style={{ flex: 1, padding: '14px 16px', overflowY: 'auto' }}>
-        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', marginBottom: 10 }}>RECOMMENDED PLANS</div>
+        <div style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginBottom: 10 }}>RECOMMENDED PLANS</div>
         {INSURANCE_PLANS.map(plan => {
           const c = typeColors[plan.type] || '#EC4899'
           const active = selected.name === plan.name
@@ -348,12 +348,12 @@ export function InsuranceScreen({ onBack }: { onBack: () => void }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
                     <span style={{ fontSize: 7, background: `${c}20`, color: c, padding: '2px 7px', borderRadius: 4, fontFamily: 'JetBrains Mono', fontWeight: 700 }}>{plan.type.toUpperCase()}</span>
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'white', fontFamily: 'Space Grotesk' }}>{plan.name}</div>
-                  <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', marginTop: 2 }}>{plan.provider} · Cover: {plan.cover}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#e8f0fe', fontFamily: 'Space Grotesk' }}>{plan.name}</div>
+                  <div style={{ fontSize: 8, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginTop: 2 }}>{plan.provider} · Cover: {plan.cover}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 16, fontWeight: 800, color: active ? c : 'white', fontFamily: 'Space Grotesk' }}>₹{plan.premium}</div>
-                  <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono' }}>/month</div>
+                  <div style={{ fontSize: 7, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>/month</div>
                 </div>
               </div>
             </motion.div>
@@ -397,19 +397,19 @@ export function CreditCardScreen({ onBack }: { onBack: () => void }) {
                 <div style={{ position: 'absolute', top: -20, right: -20, width: 90, height: 90, borderRadius: '50%', background: 'rgba(99,102,241,0.08)' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: 'white', fontFamily: 'Space Grotesk' }}>{card.name}</div>
-                    <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', marginTop: 2 }}>{card.number}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#e8f0fe', fontFamily: 'Space Grotesk' }}>{card.name}</div>
+                    <div style={{ fontSize: 8, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginTop: 2 }}>{card.number}</div>
                   </div>
                   <CreditCard size={22} color="rgba(99,102,241,0.6)" />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <div><div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono' }}>AMOUNT DUE</div><div style={{ fontSize: 18, fontWeight: 800, color: '#EF4444', fontFamily: 'Space Grotesk' }}>₹{card.due.toLocaleString()}</div></div>
-                  <div style={{ textAlign: 'right' }}><div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono' }}>DUE DATE</div><div style={{ fontSize: 13, fontWeight: 700, color: '#F59E0B', fontFamily: 'Space Grotesk' }}>{card.dueDate}</div></div>
+                  <div><div style={{ fontSize: 8, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>AMOUNT DUE</div><div style={{ fontSize: 18, fontWeight: 800, color: '#EF4444', fontFamily: 'Space Grotesk' }}>₹{card.due.toLocaleString()}</div></div>
+                  <div style={{ textAlign: 'right' }}><div style={{ fontSize: 8, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>DUE DATE</div><div style={{ fontSize: 13, fontWeight: 700, color: '#F59E0B', fontFamily: 'Space Grotesk' }}>{card.dueDate}</div></div>
                 </div>
-                <div style={{ marginTop: 10, height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{ marginTop: 10, height: 4, background: 'var(--accent-dim)', borderRadius: 99, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${(card.used / card.limit) * 100}%`, background: '#6366F1', borderRadius: 99 }} />
                 </div>
-                <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.2)', fontFamily: 'JetBrains Mono', marginTop: 3 }}>₹{card.used.toLocaleString()} of ₹{card.limit.toLocaleString()} used</div>
+                <div style={{ fontSize: 7, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginTop: 3 }}>₹{card.used.toLocaleString()} of ₹{card.limit.toLocaleString()} used</div>
               </motion.div>
             ))}
           </>
@@ -417,11 +417,11 @@ export function CreditCardScreen({ onBack }: { onBack: () => void }) {
         {step === 'detail' && (
           <>
             <div style={{ background: 'rgba(99,102,241,0.08)', borderRadius: 12, padding: '14px', border: '1px solid rgba(99,102,241,0.15)', marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'white', fontFamily: 'Space Grotesk' }}>{selected.name}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#e8f0fe', fontFamily: 'Space Grotesk' }}>{selected.name}</div>
               <div style={{ fontSize: 24, fontWeight: 900, color: '#EF4444', fontFamily: 'Space Grotesk', margin: '6px 0' }}>₹{selected.due.toLocaleString()}</div>
-              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono' }}>Due by {selected.dueDate}</div>
+              <div style={{ fontSize: 8, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>Due by {selected.dueDate}</div>
             </div>
-            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', marginBottom: 8 }}>PAYMENT OPTION</div>
+            <div style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginBottom: 8 }}>PAYMENT OPTION</div>
             {[
               { key: 'full', label: 'Full Payment', value: `₹${selected.due.toLocaleString()}` },
               { key: 'min', label: 'Minimum Due', value: `₹${Math.round(selected.due * 0.1).toLocaleString()}` },
@@ -435,7 +435,7 @@ export function CreditCardScreen({ onBack }: { onBack: () => void }) {
             ))}
             {payType === 'custom' && (
               <input value={custom} onChange={e => setCustom(e.target.value.replace(/[^0-9]/g, ''))} placeholder="Enter amount"
-                style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 10, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.06)', color: 'white', fontSize: 14, outline: 'none', fontFamily: 'Space Grotesk', boxSizing: 'border-box', marginBottom: 10 }} autoFocus />
+                style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 10, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.06)', color: '#e8f0fe', fontSize: 14, outline: 'none', fontFamily: 'Space Grotesk', boxSizing: 'border-box', marginBottom: 10 }} autoFocus />
             )}
             <div style={{ marginTop: 8 }}>
               <PayButton label={`Pay ₹${payAmount.toLocaleString()}`} onPay={() => payAmount > 0 && setStep('processing')} />
@@ -481,7 +481,7 @@ export function TransactionHistoryScreen({ onBack }: { onBack: () => void }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '10px 16px 8px' }}>
         {[{ label: 'Money In', value: totalIn, color: '#10B981' }, { label: 'Money Out', value: totalOut, color: '#EF4444' }].map(s => (
           <div key={s.label} style={{ padding: '10px 12px', borderRadius: 10, background: `${s.color}08`, border: `1px solid ${s.color}20` }}>
-            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono' }}>{s.label}</div>
+            <div style={{ fontSize: 8, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>{s.label}</div>
             <div style={{ fontSize: 16, fontWeight: 800, color: s.color, fontFamily: 'Space Grotesk', marginTop: 2 }}>₹{s.value.toLocaleString()}</div>
           </div>
         ))}
@@ -501,17 +501,17 @@ export function TransactionHistoryScreen({ onBack }: { onBack: () => void }) {
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px' }}>
         {shown.map((tx, i) => (
           <motion.div key={tx.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 10, marginBottom: 4, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, fontSize: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', flexShrink: 0 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 10, marginBottom: 4, background: 'var(--accent-dim)', border: '1px solid var(--border-light)' }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, fontSize: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-dim)', flexShrink: 0 }}>
               {CAT_ICONS[tx.category] || '💳'}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'white', fontFamily: 'Space Grotesk', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tx.name}</div>
-              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono' }}>{tx.type} · {tx.time} · {tx.date}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#e8f0fe', fontFamily: 'Space Grotesk', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tx.name}</div>
+              <div style={{ fontSize: 8, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>{tx.type} · {tx.time} · {tx.date}</div>
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: tx.amount > 0 ? '#10B981' : 'white', fontFamily: 'Space Grotesk' }}>{tx.amount > 0 ? '+' : ''}₹{Math.abs(tx.amount).toLocaleString()}</div>
-              <div style={{ fontSize: 7, padding: '1px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', display: 'inline-block', marginTop: 2 }}>{tx.type}</div>
+              <div style={{ fontSize: 7, padding: '1px 6px', borderRadius: 4, background: 'var(--accent-dim)', color: '#5b8cc7', fontFamily: 'JetBrains Mono', display: 'inline-block', marginTop: 2 }}>{tx.type}</div>
             </div>
           </motion.div>
         ))}
@@ -532,11 +532,11 @@ export function ProfileScreen({ onBack, trustScore }: { onBack: () => void; trus
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <ScreenHeader title="My Profile" onBack={onBack} />
       {/* Avatar */}
-      <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 14 }}>
-        <div style={{ width: 52, height: 52, borderRadius: 16, background: 'linear-gradient(135deg,#3B82F6,#8B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: 'white', fontFamily: 'Space Grotesk', flexShrink: 0 }}>KG</div>
+      <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid var(--border-light)', paddingBottom: 14 }}>
+        <div style={{ width: 52, height: 52, borderRadius: 16, background: 'linear-gradient(135deg,#3B82F6,#8B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#e8f0fe', fontFamily: 'Space Grotesk', flexShrink: 0 }}>KG</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'white', fontFamily: 'Space Grotesk' }}>{ACCOUNT.name}</div>
-          <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', marginTop: 2 }}>{ACCOUNT.accountNumber} · {ACCOUNT.branch}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#e8f0fe', fontFamily: 'Space Grotesk' }}>{ACCOUNT.name}</div>
+          <div style={{ fontSize: 8, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginTop: 2 }}>{ACCOUNT.accountNumber} · {ACCOUNT.branch}</div>
         </div>
         <div style={{ padding: '4px 8px', borderRadius: 20, background: `${trustColor}12`, border: `1px solid ${trustColor}30`, display: 'flex', alignItems: 'center', gap: 4 }}>
           <div style={{ width: 5, height: 5, borderRadius: '50%', background: trustColor }} />
@@ -545,7 +545,7 @@ export function ProfileScreen({ onBack, trustScore }: { onBack: () => void; trus
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-light)' }}>
         {(['account', 'security', 'upi'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             style={{ flex: 1, padding: '9px', border: 'none', background: 'transparent', color: tab === t ? '#3B82F6' : 'rgba(255,255,255,0.3)', fontSize: 9, fontWeight: tab === t ? 700 : 400, cursor: 'pointer', fontFamily: 'Space Grotesk', borderBottom: tab === t ? '2px solid #3B82F6' : '2px solid transparent', textTransform: 'capitalize' }}>
@@ -558,9 +558,9 @@ export function ProfileScreen({ onBack, trustScore }: { onBack: () => void; trus
         {tab === 'account' && (
           <>
             {[['Full Name', ACCOUNT.name], ['Account No.', '3847 2910 4521'], ['IFSC Code', ACCOUNT.ifsc], ['Branch', ACCOUNT.branch], ['Account Type', ACCOUNT.type], ['Bank', ACCOUNT.bank]].map(([k, v]) => (
-              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono' }}>{k}</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: 'white', fontFamily: 'Space Grotesk' }}>{v}</span>
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
+                <span style={{ fontSize: 10, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>{k}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: '#e8f0fe', fontFamily: 'Space Grotesk' }}>{v}</span>
               </div>
             ))}
           </>
@@ -569,24 +569,36 @@ export function ProfileScreen({ onBack, trustScore }: { onBack: () => void; trus
           <>
             <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', marginBottom: 10 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#10B981', fontFamily: 'Space Grotesk', marginBottom: 4 }}>AEGIS-X Active</div>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono' }}>Behavioral monitoring enabled · T(t) = {trustScore.toFixed(0)}%</div>
+              <div style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>Behavioral monitoring enabled · T(t) = {trustScore.toFixed(0)}%</div>
             </div>
             {['Change UPI PIN', 'Change Login Password', 'Biometric Login', 'Two-Factor Auth', 'Manage Devices', 'Login History'].map(item => (
-              <div key={item} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }}>
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontFamily: 'Space Grotesk' }}>{item}</span>
-                <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.2)' }}>›</span>
+              <div key={item} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: '1px solid var(--border-light)', cursor: 'pointer' }}>
+                <span style={{ fontSize: 11, color: '#93b4e4', fontFamily: 'Space Grotesk' }}>{item}</span>
+                <span style={{ fontSize: 14, color: '#5b8cc7' }}>›</span>
               </div>
             ))}
+            {/* Reset onboarding button — for demo purposes */}
+            <button onClick={() => {
+              const u = localStorage.getItem('aegisx_username') || 'default'
+              localStorage.removeItem(`aegisx_onboarding_done_${u}`)
+              localStorage.removeItem(`aegisx_mpin_${u}`)
+              localStorage.removeItem('aegisx_onboarding_done')
+              localStorage.removeItem('aegisx_mpin')
+              alert('Onboarding reset! Refresh the page to re-enroll.')
+              window.location.reload()
+            }} style={{ marginTop: 16, width: '100%', padding: '10px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: '#F87171', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'Space Grotesk' }}>
+              🔄 Reset Onboarding & MPIN (Demo)
+            </button>
           </>
         )}
         {tab === 'upi' && (
           <>
-            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono', marginBottom: 8 }}>LINKED UPI IDs</div>
+            <div style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono', marginBottom: 8 }}>LINKED UPI IDs</div>
             {['karan@cbi', 'kgupta@okicici', 'karan.gupta@ybl'].map((id, i) => (
-              <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, marginBottom: 6, background: 'rgba(255,255,255,0.02)', border: `1px solid ${i === 0 ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.05)'}` }}>
+              <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, marginBottom: 6, background: 'var(--accent-dim)', border: `1px solid ${i === 0 ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.05)'}` }}>
                 <div style={{ width: 28, height: 28, borderRadius: 8, background: i === 0 ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>@</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'white', fontFamily: 'Space Grotesk' }}>{id}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#e8f0fe', fontFamily: 'Space Grotesk' }}>{id}</div>
                   {i === 0 && <div style={{ fontSize: 7, color: '#10B981', fontFamily: 'JetBrains Mono', marginTop: 1 }}>PRIMARY</div>}
                 </div>
               </div>

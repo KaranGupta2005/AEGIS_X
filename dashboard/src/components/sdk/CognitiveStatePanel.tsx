@@ -39,13 +39,13 @@ export const CognitiveStatePanel: React.FC<CognitiveStatePanelProps> = ({ state,
           <div style={{ fontSize: 12, fontWeight: 800, color: meta.color, fontFamily: 'Space Grotesk', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             {state}
           </div>
-          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontFamily: 'JetBrains Mono' }}>{meta.desc}</div>
+          <div style={{ fontSize: 9, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>{meta.desc}</div>
         </div>
         <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: meta.color, fontFamily: 'Space Grotesk' }}>
             {Math.round(stability * 100)}%
           </div>
-          <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrains Mono' }}>STABILITY</div>
+          <div style={{ fontSize: 7, color: '#5b8cc7', fontFamily: 'JetBrains Mono' }}>STABILITY</div>
         </div>
       </motion.div>
 

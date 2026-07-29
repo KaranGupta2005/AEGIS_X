@@ -1,65 +1,75 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════
    LIGHT MODE (Default) — Central Bank inspired
    Deep maroon primary, white backgrounds, clean banking UI
    ═══════════════════════════════════════════════════════════════ */
 :root {
-  --bg-page: #F5F6FA;
+  --bg-page: #f0f5ff;
   --bg-panel: #FFFFFF;
   --bg-panel-trans: rgba(255, 255, 255, 0.95);
-  --bg-card: #FFFFFF;
+  --bg-card: #f8faff;
   --bg-elevated: #FFFFFF;
-  --border-light: rgba(0, 0, 0, 0.06);
-  --border-medium: rgba(0, 0, 0, 0.10);
-  --text-main: #1A1A2E;
-  --text-sub: #4A5568;
-  --text-muted: #718096;
-  --accent: #8B1A1A;
-  --accent-dim: rgba(139, 26, 26, 0.06);
-  --accent-blue: #1B3A6B;
+  --bg-console: #0f1d32;
+  --border-light: rgba(30, 64, 175, 0.10);
+  --border-medium: rgba(30, 64, 175, 0.18);
+  --text-main: #0f1d32;
+  --text-sub: #1e3a5f;
+  --text-muted: #4b6fa0;
+  --accent: #2563EB;
+  --accent-dim: rgba(37, 99, 235, 0.06);
+  --accent-blue: #1d4ed8;
   --accent-warn: #D97706;
-  --accent-danger: #C41E3A;
-  --accent-purple: #6B21A8;
-  --accent-green: #16A34A;
+  --accent-danger: #DC2626;
+  --accent-purple: #6366F1;
+  --accent-green: #059669;
   --radius: 12px;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
-  --shadow-lg: 0 10px 30px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04);
+  --shadow-sm: 0 1px 3px rgba(30, 64, 175, 0.06), 0 1px 2px rgba(30, 64, 175, 0.04);
+  --shadow-md: 0 4px 12px rgba(30, 64, 175, 0.08), 0 2px 4px rgba(30, 64, 175, 0.05);
+  --shadow-lg: 0 10px 30px rgba(30, 64, 175, 0.12), 0 4px 8px rgba(30, 64, 175, 0.06);
   color-scheme: light;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   DARK MODE — Original AEGIS-X theme
+   DARK MODE — AEGIS-X Blue Theme (unified with landing page)
    ═══════════════════════════════════════════════════════════════ */
 [data-theme="dark"] {
-  --bg-page: #0A0D14;
-  --bg-panel: #12151E;
-  --bg-panel-trans: rgba(18, 21, 30, 0.92);
-  --bg-card: #161A26;
-  --bg-elevated: #1A1F2E;
-  --border-light: rgba(148, 163, 184, 0.07);
-  --border-medium: rgba(148, 163, 184, 0.12);
-  --text-main: #F1F5F9;
-  --text-sub: #94A3B8;
-  --text-muted: #64748B;
-  --accent: #10B981;
-  --accent-dim: rgba(16, 185, 129, 0.08);
-  --accent-blue: #3B82F6;
+  --bg-page: #0a1628;
+  --bg-panel: #0f1d32;
+  --bg-panel-trans: rgba(15, 29, 50, 0.92);
+  --bg-card: #111f38;
+  --bg-elevated: #142440;
+  --border-light: rgba(59, 130, 246, 0.08);
+  --border-medium: rgba(59, 130, 246, 0.14);
+  --text-main: #e8f0fe;
+  --text-sub: #93b4e4;
+  --text-muted: #5b8cc7;
+  --accent: #3B82F6;
+  --accent-dim: rgba(59, 130, 246, 0.08);
+  --accent-blue: #60a5fa;
   --accent-warn: #F59E0B;
   --accent-danger: #EF4444;
-  --accent-purple: #8B5CF6;
-  --accent-green: #10B981;
+  --accent-purple: #818CF8;
+  --accent-green: #34D399;
   --radius: 10px;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
-  --shadow-lg: 0 10px 30px rgba(0,0,0,0.5);
+  --shadow-sm: 0 1px 3px rgba(10, 22, 40, 0.4);
+  --shadow-md: 0 4px 12px rgba(10, 22, 40, 0.5);
+  --shadow-lg: 0 10px 30px rgba(10, 22, 40, 0.6);
   color-scheme: dark;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body, #root { height: 100%; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
 
 body {
   background: var(--bg-page);
@@ -77,33 +87,80 @@ body {
   background: rgba(139, 26, 26, 0.15);
   color: var(--text-main);
 }
+
 [data-theme="dark"] ::selection {
   background: rgba(16, 185, 129, 0.2);
   color: var(--text-main);
 }
 
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(139, 26, 26, 0.15); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(139, 26, 26, 0.30); }
-[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.18); }
-[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.35); }
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
 
-button:focus { outline: none; }
-.card-swap-container * { user-select: none; }
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 26, 26, 0.15);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 26, 26, 0.30);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.18);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.35);
+}
+
+button:focus {
+  outline: none;
+}
+
+.card-swap-container * {
+  user-select: none;
+}
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 1; box-shadow: 0 0 4px currentColor; }
-  50% { opacity: 0.5; box-shadow: 0 0 10px currentColor; }
+
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 4px currentColor;
+  }
+
+  50% {
+    opacity: 0.5;
+    box-shadow: 0 0 10px currentColor;
+  }
 }
 
 @keyframes aurora {
-  0% { background-position: 0% 50%; transform: scale(1) rotate(0deg); }
-  50% { background-position: 100% 50%; transform: scale(1.1) rotate(3deg); }
-  100% { background-position: 0% 50%; transform: scale(1) rotate(0deg); }
+  0% {
+    background-position: 0% 50%;
+    transform: scale(1) rotate(0deg);
+  }
+
+  50% {
+    background-position: 100% 50%;
+    transform: scale(1.1) rotate(3deg);
+  }
+
+  100% {
+    background-position: 0% 50%;
+    transform: scale(1) rotate(0deg);
+  }
 }
 
-.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
 
 /* Card styles for light mode */
 .aegis-card {
@@ -113,6 +170,299 @@ button:focus { outline: none; }
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
+
 .aegis-card:hover {
   box-shadow: var(--shadow-md);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE & MOBILE — PWA native-app feel
+   ═══════════════════════════════════════════════════════════════ */
+
+/* PWA standalone mode — remove browser chrome spacing */
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Mobile-first responsive */
+@media (max-width: 768px) {
+
+  /* Hide sidebar on mobile — use bottom nav instead */
+  .desktop-sidebar {
+    display: none !important;
+  }
+
+  /* Main content fills screen */
+  main {
+    padding: 12px !important;
+  }
+
+  /* Live Demo: stack banking app + console vertically */
+  .demo-grid {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 1fr auto !important;
+    gap: 8px !important;
+  }
+
+  /* Console becomes a collapsed bottom sheet on mobile */
+  .aegis-console {
+    max-height: 45vh;
+    border-radius: 16px 16px 0 0 !important;
+    overflow-y: auto;
+  }
+
+  /* Touch-friendly tap targets */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Larger text for readability */
+  .trust-score-display {
+    font-size: 48px !important;
+  }
+}
+
+/* Tablet */
+@media (min-width: 769px) and (max-width: 1024px) {
+  main {
+    padding: 16px !important;
+  }
+}
+
+/* Prevent text selection on app-like elements */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* iOS rubber-band scrolling fix */
+.scroll-container {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Haptic-style tap feedback */
+.tap-target:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* Safe area padding for notched devices */
+.safe-area-bottom {
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+.safe-area-top {
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Mobile banking app container */
+.banking-app-mobile {
+  border-radius: 0 !important;
+  border: none !important;
+  height: 100% !important;
+}
+
+/* Smooth page transitions */
+.page-transition {
+  animation: fadeSlideIn 0.2s ease-out;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Touch ripple effect */
+.ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), rgba(255, 255, 255, 0.15) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.ripple:active::after {
+  opacity: 1;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   PREMIUM VISUAL POLISH — Glassmorphism, gradients, micro-animations
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Glass panel effect */
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #10B981, #3B82F6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Subtle glow on hover for interactive cards */
+.glow-hover {
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.glow-hover:hover {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.15);
+}
+
+/* Smooth number transitions */
+.animate-number {
+  transition: color 0.3s ease;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Status dot animation */
+@keyframes status-pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.5);
+    opacity: 0.4;
+  }
+}
+
+.status-pulse {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+/* Skeleton loading shimmer */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.06) 50%, rgba(255, 255, 255, 0.03) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+/* Improved focus ring for accessibility */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Smooth transitions for theme changes */
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: ease;
+  transition-duration: 0s;
+}
+
+[data-theme] *,
+[data-theme] *::before,
+[data-theme] *::after {
+  transition-duration: 0.2s;
+}
+
+/* Premium input styling */
+input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* Subtle text shadow for headings in dark mode */
+[data-theme="dark"] h1,
+[data-theme="dark"] .heading-glow {
+  text-shadow: 0 0 30px rgba(16, 185, 129, 0.15);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   LANDING PAGE RESPONSIVE
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) {
+  /* Hero: stack vertically on smaller screens */
+  .hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+    padding: 40px 24px !important;
+  }
+
+  /* Hide nav center links on mobile */
+  .nav-center { display: none !important; }
+
+  /* Navbar padding */
+  .nav-container { padding: 12px 16px !important; }
+
+  /* Bottom stats row: stack */
+  .stats-row {
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 20px 24px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  /* Even smaller: reduce hero text */
+  .hero-title { font-size: 32px !important; }
+  .hero-desc { font-size: 14px !important; }
+
+  /* CTA input pill: stack vertically */
+  .hero-cta {
+    flex-direction: column !important;
+    border-radius: 16px !important;
+    width: 100% !important;
+  }
+  .hero-cta input { width: 100% !important; padding: 14px 16px !important; }
+  .hero-cta button { width: 100% !important; justify-content: center !important; }
 }

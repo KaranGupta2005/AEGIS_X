@@ -58,6 +58,21 @@ export interface TrustUpdate {
   event_number: number
   latency_ms: number
   confidence: number
+  // Continuous monitoring context (added by continuous SDK)
+  session_context?: {
+    sdk_state: string
+    current_screen: string
+    session_duration_s: number
+    navigation_path: string[]
+  }
+  // Security containment state
+  security?: {
+    security_state: string
+    sandbox_active: boolean
+    threat_score: number
+  }
+  // Verification challenge (when STEP_UP)
+  verification_challenge?: any
 }
 
 export interface SessionInfo {
@@ -133,6 +148,41 @@ export async function getSessionSummary(userId: string) {
   return res.json()
 }
 
+// ─── CONTINUOUS MONITORING ENDPOINTS ────────────────────────────────────────
+
+export interface SessionSummary {
+  user_id: string
+  session_id: string
+  sdk_state: string
+  current_screen: string
+  current_activity: string
+  duration_seconds: number
+  event_count: number
+  navigation_path: string[]
+  trust_history: number[]
+  timeline_length: number
+  total_alerts: number
+  total_decisions: number
+}
+
+export async function getSessionSummaryMonitor(userId: string): Promise<SessionSummary | null> {
+  const res = await fetch(`${API_BASE}/session/${userId}/summary`)
+  if (!res.ok) return null
+  return res.json()
+}
+
+export async function getSessionTimeline(userId: string, limit = 100) {
+  const res = await fetch(`${API_BASE}/session/${userId}/timeline?limit=${limit}`)
+  if (!res.ok) return null
+  return res.json()
+}
+
+export async function getSessionsOverview() {
+  const res = await fetch(`${API_BASE}/sessions/overview`)
+  if (!res.ok) return { sessions: [], count: 0 }
+  return res.json()
+}
+
 export type SimulatorScenario = 'normal' | 'scam' | 'malware'
 
 export function createWebSocket(userId: string, onMessage: (data: TrustUpdate) => void, onClose?: () => void) {
@@ -200,50 +250,53 @@ function generateNormalEvent() {
 
 function generateScamEvent(stress: number) {
   const t = Date.now() / 1000
-  const panic = Math.sin(t * 1.2) * 0.2
-  const surge = Math.random() < 0.15 ? 0.3 : 0
-  const s = Math.min(1, stress + panic * 0.3 + surge)
+  const panic = Math.sin(t * 1.2) * 0.15
+  const surge = Math.random() < 0.12 ? 0.20 : 0
+  // V2: More gradual stress curve — gives the graph time to show decline
+  const s = Math.min(1, stress * 0.85 + panic * 0.2 + surge)
   return {
-    typing_speed_cps: Math.max(0.3, 1.8 - s * 1.0 + Math.sin(t * 0.8) * 0.3),
-    typing_rhythm_variance: 60 + s * 250 + Math.random() * 50,
-    typing_pressure_mean: 0.65 + s * 0.25 + (Math.random() - 0.5) * 0.08,
-    swipe_velocity_mean: Math.max(0.05, 0.45 - s * 0.35 + Math.random() * 0.1),
-    swipe_velocity_variance: 0.18 + s * 0.4 + Math.random() * 0.1,
-    swipe_straightness: Math.max(0.2, 0.65 - s * 0.3 + (Math.random() - 0.5) * 0.1),
-    touch_duration_mean: 160 + s * 200 + Math.sin(t * 1.5) * 30,
-    touch_duration_variance: 700 + s * 3500 + Math.random() * 500,
-    touch_area_mean: 0.50 + s * 0.15 + (Math.random() - 0.5) * 0.04,
-    hesitation_ratio: Math.min(0.95, 0.25 + s * 0.55 + panic * 0.15),
-    hesitation_count: Math.round(3 + s * 10 + Math.random() * 3),
-    correction_rate: Math.min(0.7, 0.12 + s * 0.45 + surge * 0.2),
-    scroll_speed_mean: Math.max(0.02, 0.25 - s * 0.2 + Math.random() * 0.05),
-    gyroscope_variance: 0.02 + s * 0.08 + Math.random() * 0.02,
-    session_time_elapsed: 200 + s * 300 + Math.random() * 60,
-    interaction_intensity: Math.max(1, Math.round(3.5 - s * 2 + Math.random() * 1.5)),
+    typing_speed_cps: Math.max(0.3, 2.2 - s * 1.4 + Math.sin(t * 0.8) * 0.3),
+    typing_rhythm_variance: 45 + s * 260 + Math.random() * 40,
+    typing_pressure_mean: 0.62 + s * 0.28 + (Math.random() - 0.5) * 0.06,
+    swipe_velocity_mean: Math.max(0.05, 0.55 - s * 0.40 + Math.random() * 0.08),
+    swipe_velocity_variance: 0.15 + s * 0.40 + Math.random() * 0.08,
+    swipe_straightness: Math.max(0.2, 0.70 - s * 0.35 + (Math.random() - 0.5) * 0.08),
+    touch_duration_mean: 140 + s * 240 + Math.sin(t * 1.5) * 25,
+    touch_duration_variance: 600 + s * 3800 + Math.random() * 400,
+    touch_area_mean: 0.48 + s * 0.18 + (Math.random() - 0.5) * 0.04,
+    hesitation_ratio: Math.min(0.95, 0.20 + s * 0.60 + panic * 0.12),
+    hesitation_count: Math.round(2 + s * 12 + Math.random() * 3),
+    correction_rate: Math.min(0.75, 0.10 + s * 0.50 + surge * 0.15),
+    scroll_speed_mean: Math.max(0.02, 0.30 - s * 0.22 + Math.random() * 0.04),
+    gyroscope_variance: 0.018 + s * 0.09 + Math.random() * 0.015,
+    session_time_elapsed: 180 + s * 350 + Math.random() * 50,
+    interaction_intensity: Math.max(1, Math.round(4 - s * 2.5 + Math.random() * 1.5)),
   }
 }
 
 function generateMalwareEvent() {
   const t = Date.now() / 1000
-  const glitch = Math.random() < 0.08 ? (Math.random() - 0.5) * 0.5 : 0
-  const micro = () => (Math.random() - 0.5) * 0.003
+  // V2: Slightly more variation to show a progression rather than instant flat-line
+  const drift = Math.sin(t * 0.3) * 0.08
+  const glitch = Math.random() < 0.06 ? (Math.random() - 0.5) * 0.3 : 0
+  const micro = () => (Math.random() - 0.5) * 0.005
   return {
-    typing_speed_cps: 9.2 + Math.sin(t * 0.4) * 0.4 + micro() * 10 + glitch,
-    typing_rhythm_variance: 1.0 + Math.abs(micro()) * 100 + Math.random() * 0.8,
-    typing_pressure_mean: 0.50 + micro() * 5,
-    swipe_velocity_mean: 2.35 + Math.cos(t * 0.3) * 0.1 + micro() * 10,
-    swipe_velocity_variance: Math.max(0.0001, micro() * 2 + 0.003),
-    swipe_straightness: Math.min(1, 0.992 + micro()),
-    touch_duration_mean: 46 + Math.sin(t * 0.6) * 3 + micro() * 200,
-    touch_duration_variance: 3 + Math.random() * 2.5,
-    touch_area_mean: 0.40 + micro() * 3,
-    hesitation_ratio: Math.max(0, micro() * 2 + 0.002),
-    hesitation_count: Math.random() < 0.05 ? 1 : 0,
+    typing_speed_cps: 9.0 + drift + Math.random() * 0.6 + glitch,
+    typing_rhythm_variance: 1.5 + Math.abs(micro()) * 80 + Math.random() * 1.2,
+    typing_pressure_mean: 0.50 + micro() * 4,
+    swipe_velocity_mean: 2.30 + Math.cos(t * 0.3) * 0.12 + micro() * 8,
+    swipe_velocity_variance: Math.max(0.0001, micro() * 1.5 + 0.004),
+    swipe_straightness: Math.min(1, 0.990 + micro()),
+    touch_duration_mean: 46 + Math.sin(t * 0.6) * 4 + micro() * 150,
+    touch_duration_variance: 4 + Math.random() * 3,
+    touch_area_mean: 0.40 + micro() * 2.5,
+    hesitation_ratio: Math.max(0, micro() * 1.5 + 0.003),
+    hesitation_count: Math.random() < 0.04 ? 1 : 0,
     correction_rate: Math.max(0, micro() + 0.001),
-    scroll_speed_mean: 1.75 + Math.sin(t * 0.5) * 0.08,
-    gyroscope_variance: Math.max(0.00005, Math.abs(micro()) * 0.5),
-    session_time_elapsed: 15 + Math.random() * 8 + Math.sin(t * 0.2) * 3,
-    interaction_intensity: Math.round(17 + Math.sin(t * 0.8) * 3 + Math.random() * 2),
+    scroll_speed_mean: 1.72 + Math.sin(t * 0.5) * 0.10,
+    gyroscope_variance: Math.max(0.00005, Math.abs(micro()) * 0.4),
+    session_time_elapsed: 12 + Math.random() * 6 + Math.sin(t * 0.2) * 2,
+    interaction_intensity: Math.round(16 + Math.sin(t * 0.8) * 3 + Math.random() * 2),
   }
 }
 
@@ -282,12 +335,11 @@ export function createSimulator(
         event.typing_speed_cps = 3.2 + Math.sin(t * 1.1) * 0.8 + Math.random() * 0.8
         event.typing_rhythm_variance = 28 + Math.sin(t * 0.7) * 10
         event.interaction_intensity = Math.round(9 + Math.random() * 4)
-        txAmount = Math.round(1500 + Math.sin(step * 0.2) * 1000 + Math.random() * 2000)
+        // Normal user browses — no simulated transactions (keeps trust stable)
       } else if (phase <= 14) {
         event.typing_speed_cps = 0.8 + Math.random() * 0.4
         event.scroll_speed_mean = 0.25 + Math.random() * 0.15
         event.touch_duration_mean = 135 + Math.random() * 30
-        txAmount = Math.round(2000 + Math.random() * 2500)
       } else if (phase <= 18) {
         event.scroll_speed_mean = 0.7 + Math.sin(t * 0.5) * 0.3
         event.interaction_intensity = Math.round(4 + Math.random() * 3)

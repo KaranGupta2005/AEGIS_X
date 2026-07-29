@@ -1,8 +1,9 @@
 """
 Cognitive State Classification Service.
 
-Uses a Random Forest classifier trained on behavioral features to predict
-cognitive state: calm, focused, distressed, panicked, coerced, robotic.
+Uses a HistGradientBoosting classifier (V2) trained on behavioral features
+with engineered cross-features to predict cognitive state:
+    calm, focused, distressed, panicked, coerced, robotic.
 
 Stability scores are standard normalized values that feed into T(t):
     calm = 1.0, focused = 0.85, distressed = 0.50, panicked = 0.30,
@@ -61,28 +62,84 @@ STATE_SEVERITY_ORDER = {
     "robotic": 5,
 }
 
-MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "cognitive" / "cognitive_rf.pkl"
+MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "cognitive" / "cognitive_hgb.pkl"
+# Fallback to old model if V2 not available
+MODEL_PATH_LEGACY = Path(__file__).parent.parent.parent / "models" / "cognitive" / "cognitive_rf_legacy.pkl"
+
+
+def _engineer_cognitive_features(vector: np.ndarray) -> np.ndarray:
+    """
+    Apply feature engineering to the 8 base features to produce 14 features
+    that the V2 HistGradientBoosting model expects.
+    Input: (8,) array. Output: (14,) array.
+    """
+    hesitation = vector[0]
+    correction = vector[1]
+    speed = vector[2]
+    rhythm_var = vector[3]
+    touch_dur = vector[4]
+    gyro = vector[5]
+    intensity = vector[6]
+    straightness = vector[7]
+
+    speed_consistency = speed / max(rhythm_var / 50, 0.01)
+    stress_compound = hesitation * correction * max(gyro * 20, 0.001)
+    automation_signal = speed * straightness / max(hesitation + 0.01, 0.01)
+    human_variability = rhythm_var / 50 + gyro * 20 + (1 - straightness) * 3
+    interaction_efficiency = intensity / max(speed * 2, 1.0)
+    freeze_indicator = hesitation * (touch_dur / 200) * (1 / max(intensity, 1))
+
+    engineered = np.array([
+        speed_consistency, stress_compound, automation_signal,
+        human_variability, interaction_efficiency, freeze_indicator,
+    ])
+    return np.concatenate([vector, engineered])
 
 
 class CognitiveService:
 
     def __init__(self, model_path: Optional[Path] = None):
         path = model_path or MODEL_PATH
-        if not path.exists():
-            raise FileNotFoundError(
-                f"Cognitive model not found at {path}. "
-                f"Run 'python scripts/train_cognitive_model.py' first."
-            )
-        self._model = load(path)
+        self._model = None
+        self._use_engineering = False
         self._feature_names = COGNITIVE_FEATURES
 
+        # Try V2 (HGB with feature engineering) first
+        if path.exists():
+            try:
+                self._model = load(path)
+                self._use_engineering = True
+                return
+            except Exception as e:
+                print(f"[AEGIS-X] WARNING: Failed to load V2 cognitive model: {e}")
+
+        # Fallback to legacy RF model
+        legacy_path = MODEL_PATH_LEGACY
+        if legacy_path.exists():
+            try:
+                self._model = load(legacy_path)
+                self._use_engineering = False
+                return
+            except Exception as e:
+                print(f"[AEGIS-X] WARNING: Failed to load legacy model: {e}")
+
+        print(f"[AEGIS-X] WARNING: No cognitive model found. Using fallback (always 'calm').")
+
     def predict_state(self, features: Dict[str, float]) -> str:
+        if self._model is None:
+            return "calm"  # Safe fallback
         vector = self._extract_feature_vector(features)
+        if self._use_engineering:
+            vector = _engineer_cognitive_features(vector)
+            vector = np.nan_to_num(vector, nan=0.0, posinf=100.0, neginf=-100.0)
         prediction = self._model.predict([vector])[0]
         return str(prediction)
 
     def predict_probabilities(self, features: Dict[str, float]) -> Dict[str, float]:
         vector = self._extract_feature_vector(features)
+        if self._use_engineering:
+            vector = _engineer_cognitive_features(vector)
+            vector = np.nan_to_num(vector, nan=0.0, posinf=100.0, neginf=-100.0)
         probas = self._model.predict_proba([vector])[0]
         classes = self._model.classes_
         return {str(cls): round(float(prob), 4) for cls, prob in zip(classes, probas)}
@@ -95,7 +152,16 @@ class CognitiveService:
 
     def assess(self, features: Dict[str, float]) -> Dict:
         """Full cognitive assessment — primary interface for the pipeline."""
+        if self._model is None:
+            return {
+                "state": "calm", "stability_score": 1.0, "confidence": 0.5,
+                "alert": None, "severity": 0, "probabilities": {"calm": 1.0},
+                "cognitive_component": 0.20,
+            }
         vector = self._extract_feature_vector(features)
+        if self._use_engineering:
+            vector = _engineer_cognitive_features(vector)
+            vector = np.nan_to_num(vector, nan=0.0, posinf=100.0, neginf=-100.0)
 
         state = str(self._model.predict([vector])[0])
         probas = self._model.predict_proba([vector])[0]
