@@ -18,7 +18,8 @@ def main():
         ("models/cognitive/cognitive_hgb.pkl", "models/cognitive"),
         ("models/cognitive/cognitive_model_meta.json", "models/cognitive"),
         ("models/classifiers/isolation_forest.pkl", "models/classifiers"),
-        ("models/insightface/models/buffalo_l.zip", "models/insightface/models"),
+        # InsightFace downloads from GitHub at first use (too large for build memory)
+        # ("models/insightface/models/buffalo_l.zip", "models/insightface/models"),
         ("models/mediapipe/face_landmarker.task", "models/mediapipe"),
         ("models/speechbrain_ecapa/classifier.ckpt", "models/speechbrain_ecapa"),
         ("models/speechbrain_ecapa/embedding_model.ckpt", "models/speechbrain_ecapa"),

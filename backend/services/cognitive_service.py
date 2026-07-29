@@ -105,7 +105,24 @@ class CognitiveService:
         self._use_engineering = False
         self._feature_names = COGNITIVE_FEATURES
 
-        # Try V2 (HGB with feature engineering) first
+        # Priority order:
+        # 1. cognitive_rf.pkl (trained on deploy — guaranteed compatible numpy)
+        # 2. cognitive_hgb.pkl (from HuggingFace — may have numpy version mismatch)
+        # 3. Legacy fallback
+
+        # Try locally-trained model first (build generates this)
+        if MODEL_PATH_V2.exists():
+            try:
+                self._model = load(MODEL_PATH_V2)
+                if hasattr(self._model, '_model'):
+                    self._use_engineering = False
+                else:
+                    self._use_engineering = True
+                return
+            except Exception as e:
+                print(f"[AEGIS-X] WARNING: Failed to load cognitive_rf.pkl: {e}")
+
+        # Try HF-downloaded model
         if path.exists():
             try:
                 self._model = load(path)
@@ -113,21 +130,6 @@ class CognitiveService:
                 return
             except Exception as e:
                 print(f"[AEGIS-X] WARNING: Failed to load V2 cognitive model: {e}")
-
-        # Try V2 alternate path (cognitive_rf.pkl from train_cognitive_model_v2.py)
-        if MODEL_PATH_V2.exists():
-            try:
-                self._model = load(MODEL_PATH_V2)
-                # Check if it's a wrapped model or raw HGB
-                if hasattr(self._model, '_model'):
-                    # It's the CognitiveModelV2 wrapper — use directly without engineering
-                    self._use_engineering = False
-                else:
-                    # Raw HGB model — needs engineering
-                    self._use_engineering = True
-                return
-            except Exception as e:
-                print(f"[AEGIS-X] WARNING: Failed to load V2 alternate model: {e}")
 
         # Fallback to legacy RF model
         legacy_path = MODEL_PATH_LEGACY
