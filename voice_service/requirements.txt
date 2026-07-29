@@ -10,3 +10,4 @@ torchaudio==2.4.1+cpu
 speechbrain==1.0.0
 soundfile==0.12.1
 imageio-ffmpeg==0.5.1
+opencv-python-headless==4.10.0.84
