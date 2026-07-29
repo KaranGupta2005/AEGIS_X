@@ -70,7 +70,7 @@ def _load_speechbrain():
     except ImportError as e:
         # SpeechBrain not installed locally — check if AI service is available
         import os
-        ai_url = os.getenv("AEGISX_AI_SERVICE_URL", "")
+        ai_url = os.getenv("AEGISX_VOICE_SERVICE_URL", "")
         if ai_url:
             print(f"[AEGIS-X] SpeechBrain not local — will proxy to AI service: {ai_url}")
             _speechbrain_loaded = True  # Mark as "loaded" (via proxy)
@@ -79,7 +79,7 @@ def _load_speechbrain():
         raise RuntimeError(f"SpeechBrain not installed: {e}")
     except Exception as e:
         import os
-        ai_url = os.getenv("AEGISX_AI_SERVICE_URL", "")
+        ai_url = os.getenv("AEGISX_VOICE_SERVICE_URL", "")
         if ai_url:
             print(f"[AEGIS-X] SpeechBrain load failed — will proxy to AI service: {ai_url}")
             _speechbrain_loaded = True
@@ -343,7 +343,7 @@ class SpeechBrainVoiceProvider(IVoiceVerificationProvider):
             
             # Try AI service proxy as fallback
             import os
-            ai_url = os.getenv("AEGISX_AI_SERVICE_URL", "")
+            ai_url = os.getenv("AEGISX_VOICE_SERVICE_URL", "")
             if ai_url:
                 try:
                     import httpx

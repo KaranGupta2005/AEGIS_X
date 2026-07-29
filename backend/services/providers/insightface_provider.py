@@ -55,10 +55,22 @@ def _load_insightface():
         print("[AEGIS-X] InsightFace buffalo_l loaded successfully.")
         return _insightface_app
     except ImportError as e:
-        raise RuntimeError(
-            f"InsightFace not installed. Run: pip install -r requirements-biometric.txt\n{e}"
-        )
+        import os
+        face_url = os.getenv("AEGISX_FACE_SERVICE_URL", "")
+        if face_url:
+            print(f"[AEGIS-X] InsightFace not local — will proxy to face service: {face_url}")
+            _insightface_loaded = True
+            _insightface_app = "PROXY"
+            return _insightface_app
+        raise RuntimeError(f"InsightFace not installed: {e}")
     except Exception as e:
+        import os
+        face_url = os.getenv("AEGISX_FACE_SERVICE_URL", "")
+        if face_url:
+            print(f"[AEGIS-X] InsightFace load failed — will proxy to face service: {face_url}")
+            _insightface_loaded = True
+            _insightface_app = "PROXY"
+            return _insightface_app
         raise RuntimeError(f"Failed to load InsightFace: {e}")
 
 
@@ -222,6 +234,30 @@ class InsightFaceVerificationProvider(IFaceVerificationProvider):
             )
         except Exception as e:
             processing_ms = (time.perf_counter() - t_start) * 1000
+            # Try face service proxy as fallback
+            import os
+            face_url = os.getenv("AEGISX_FACE_SERVICE_URL", "")
+            if face_url:
+                try:
+                    import httpx
+                    import base64
+                    resp = httpx.post(
+                        f"{face_url}/face/verify",
+                        json={"image_base64": base64.b64encode(image_data).decode(), "user_id": "demo_user"},
+                        timeout=15.0,
+                    )
+                    data = resp.json()
+                    return VerificationResult(
+                        verified=data.get("match", False),
+                        confidence=data.get("confidence", 0.0),
+                        latency_ms=data.get("latency_ms", processing_ms),
+                        quality=0.8, processing_time_ms=processing_ms,
+                        reason=data.get("reason", "Face service proxy"),
+                        status=ResultStatus.SUCCESS if data.get("match") else ResultStatus.FAILED,
+                        timestamp=now, provider_name="insightface_buffalo_l_proxy",
+                    )
+                except Exception as proxy_err:
+                    print(f"[AEGIS-X FACE] Proxy also failed: {proxy_err}")
             return VerificationResult(
                 verified=False, confidence=0.0, latency_ms=processing_ms,
                 quality=0.0, processing_time_ms=processing_ms,
