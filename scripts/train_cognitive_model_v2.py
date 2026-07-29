@@ -253,8 +253,10 @@ def main():
 
     all_pass = True
     for name, features in test_cases:
-        prediction = wrapped_model.predict([features])[0]
-        probabilities = wrapped_model.predict_proba([features])[0]
+        feat_eng = engineer_features(np.array([features]))
+        feat_eng = np.nan_to_num(feat_eng, nan=0.0, posinf=100.0, neginf=-100.0)
+        prediction = model.predict(feat_eng)[0]
+        probabilities = model.predict_proba(feat_eng)[0]
         max_prob = max(probabilities)
         expected = name.split()[0].lower().rstrip("(")
         if expected == "robotic":
@@ -271,8 +273,8 @@ def main():
         print("  WARNING: Not all inference tests pass. Model may have edge cases.")
         print()
 
-    # Save
-    dump(wrapped_model, MODEL_PATH)
+    # Save — raw HGB model (cognitive_service handles feature engineering)
+    dump(model, MODEL_PATH)
     print(f"Model saved to: {MODEL_PATH.resolve()}")
     print(f"Model size: {MODEL_PATH.stat().st_size / 1024:.1f} KB")
 
