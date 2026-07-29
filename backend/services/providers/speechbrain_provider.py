@@ -351,7 +351,7 @@ class SpeechBrainVoiceProvider(IVoiceVerificationProvider):
                     resp = httpx.post(
                         f"{ai_url}/voice/verify",
                         json={"audio_base64": base64.b64encode(audio_data).decode(), "user_id": "demo_user"},
-                        timeout=45.0,
+                        timeout=120.0,
                     )
                     data = resp.json()
                     return VerificationResult(

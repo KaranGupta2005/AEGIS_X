@@ -244,7 +244,7 @@ class InsightFaceVerificationProvider(IFaceVerificationProvider):
                     resp = httpx.post(
                         f"{face_url}/face/verify",
                         json={"image_base64": base64.b64encode(image_data).decode(), "user_id": "demo_user"},
-                        timeout=45.0,
+                        timeout=120.0,
                     )
                     data = resp.json()
                     return VerificationResult(
