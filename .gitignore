@@ -10,6 +10,7 @@ build/
 # Environment
 .env
 .env.local
+env.yaml
 
 # Data (raw only — synthetic is committed)
 data/raw/
