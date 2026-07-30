@@ -151,8 +151,9 @@ def _detect_blink(landmarks) -> bool:
     left_ear = _compute_ear(landmarks, LEFT_EYE_TOP, LEFT_EYE_BOTTOM)
     right_ear = _compute_ear(landmarks, RIGHT_EYE_TOP, RIGHT_EYE_BOTTOM)
     avg_ear = (left_ear + right_ear) / 2
-    # Low EAR = eyes closed
-    return avg_ear < 0.015
+    # Low EAR = eyes closed. Threshold tuned for webcam capture:
+    # Open eyes typically give EAR ~0.08-0.15, closed gives ~0.01-0.04
+    return avg_ear < 0.055
 
 
 def _detect_smile(landmarks) -> bool:
@@ -166,7 +167,7 @@ def _detect_smile(landmarks) -> bool:
     mouth_height = np.sqrt((lower_lip.x - upper_lip.x) ** 2 + (lower_lip.y - upper_lip.y) ** 2)
 
     ratio = mouth_width / max(mouth_height, 0.001)
-    return ratio > 4.0  # Wide smile has high width/height ratio
+    return ratio > 3.2  # Smile has high width/height ratio (relaxed from 4.0 for webcam)
 
 
 def _detect_head_turn(landmarks) -> str:
@@ -193,7 +194,10 @@ def _detect_nod(landmarks) -> str:
     nose_bridge = landmarks[6]
 
     vertical_diff = nose_tip.y - nose_bridge.y
-    if vertical_diff > 0.08:
+    # Normal straight face: vertical_diff ~0.05-0.06
+    # Nod down (chin down): vertical_diff increases to 0.065+
+    # Nod up (chin up): vertical_diff decreases to 0.04 or less
+    if vertical_diff > 0.065:
         return "nod_down"
     elif vertical_diff < 0.04:
         return "nod_up"

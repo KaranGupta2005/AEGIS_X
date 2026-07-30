@@ -28,6 +28,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
   const [verifying, setVerifying] = useState(false)
   const [verificationResult, setVerificationResult] = useState<string | null>(null)
   const [trustAtPayment, setTrustAtPayment] = useState(95)
+  const [pendingVerifyStep, setPendingVerifyStep] = useState<FlowStep | null>(null)
 
   const steps = ['contacts', 'amount', 'review', 'pin', 'processing', 'success']
   const stepIndex = steps.indexOf(currentStep)
@@ -160,7 +161,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
         explanation: `₹${txAmount.toLocaleString()} requires face liveness check.`,
         created_at: new Date().toISOString(), completed_at: '',
       } as any)
-      onStepChange('face_verify')
+      setPendingVerifyStep('face_verify'); onStepChange('pin')
       return
     }
 
@@ -177,7 +178,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
         explanation: `₹${txAmount.toLocaleString()} to new contact requires face check.`,
         created_at: new Date().toISOString(), completed_at: '',
       } as any)
-      onStepChange('face_verify')
+      setPendingVerifyStep('face_verify'); onStepChange('pin')
       return
     }
 
@@ -197,7 +198,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
           explanation: `₹${txAmount.toLocaleString()} requires voice verification.`,
           created_at: new Date().toISOString(), completed_at: '',
         } as any)
-        onStepChange('voice_verify')
+        setPendingVerifyStep('voice_verify'); onStepChange('pin')
       } else {
         setChallenge({
           challenge_id: `face_25k_${Date.now()}`,
@@ -210,7 +211,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
           explanation: `₹${txAmount.toLocaleString()} requires face check.`,
           created_at: new Date().toISOString(), completed_at: '',
         } as any)
-        onStepChange('face_verify')
+        setPendingVerifyStep('face_verify'); onStepChange('pin')
       }
       return
     }
@@ -231,7 +232,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
           explanation: `₹${txAmount.toLocaleString()} requires voice verification.`,
           created_at: new Date().toISOString(), completed_at: '',
         } as any)
-        onStepChange('voice_verify')
+        setPendingVerifyStep('voice_verify'); onStepChange('pin')
       } else {
         setChallenge({
           challenge_id: `face_10k_${Date.now()}`,
@@ -245,7 +246,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
           explanation: `₹${txAmount.toLocaleString()} requires a quick face check.`,
           created_at: new Date().toISOString(), completed_at: '',
         } as any)
-        onStepChange('face_verify')
+        setPendingVerifyStep('face_verify'); onStepChange('pin')
       }
       return
     }
@@ -279,7 +280,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
           created_at: new Date().toISOString(),
           completed_at: '',
         } as any)
-        onStepChange('voice_verify')
+        setPendingVerifyStep('voice_verify'); onStepChange('pin')
       } else {
         setChallenge({
           challenge_id: `face_quick_${Date.now()}`,
@@ -300,7 +301,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
           created_at: new Date().toISOString(),
           completed_at: '',
         } as any)
-        onStepChange('face_verify')
+        setPendingVerifyStep('face_verify'); onStepChange('pin')
       }
       return
     }
@@ -332,7 +333,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
           created_at: new Date().toISOString(), completed_at: '',
         } as any)
       }
-      onStepChange('voice_verify')
+      setPendingVerifyStep('voice_verify'); onStepChange('pin')
       return
     }
 
@@ -362,11 +363,11 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
         created_at: new Date().toISOString(), completed_at: '',
       } as any)
     }
-    onStepChange('face_verify')
+    setPendingVerifyStep('face_verify'); onStepChange('pin')
   }
 
   const handleVoiceVerifyComplete = async () => {
-    if (!challenge) { onStepChange('pin'); return }
+    if (!challenge) { onStepChange('processing'); setTimeout(() => { onStepChange('success'); onSuccess(Number(amount), selectedContact) }, 1800); return }
     setVerifying(true)
     setVerificationResult('🎙️ Recording — speak the phrase...')
 
@@ -488,7 +489,8 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
       await new Promise(r => setTimeout(r, 1200))
       setVerificationResult(null)
       setVerifying(false)
-      onStepChange('pin')
+      onStepChange('processing')
+      setTimeout(() => { onStepChange('success'); onSuccess(Number(amount), selectedContact) }, 1800)
     } catch {
       setVerificationResult('✗ Microphone access required — cannot verify voice')
       await reportVerificationFailure('mic_denied', 'high')
@@ -498,7 +500,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
   }
 
   const handleFaceVerifyComplete = async () => {
-    if (!challenge) { onStepChange('pin'); return }
+    if (!challenge) { onStepChange('processing'); setTimeout(() => { onStepChange('success'); onSuccess(Number(amount), selectedContact) }, 1800); return }
     setVerifying(true)
     setVerificationResult('Opening camera...')
 
@@ -646,7 +648,8 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
       await new Promise(r => setTimeout(r, 1200))
       setVerificationResult(null)
       setVerifying(false)
-      onStepChange('pin')
+      onStepChange('processing')
+      setTimeout(() => { onStepChange('success'); onSuccess(Number(amount), selectedContact) }, 1800)
     } catch {
       // Camera unavailable — BLOCK, don't auto-pass
       if (faceStream) { faceStream.getTracks().forEach(t => t.stop()); setFaceStream(null) }
@@ -707,12 +710,18 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
       }
       // PIN correct — reset attempt counter
       localStorage.setItem(`aegisx_pin_attempts_${u}`, '0')
-      // PIN correct (or no stored PIN — first-time/demo mode)
-      onStepChange('processing')
-      setTimeout(() => {
-        onStepChange('success')
-        onSuccess(Number(amount), selectedContact)
-      }, 1800)
+      // PIN correct → check if extra biometric security step pending
+      if (pendingVerifyStep) {
+        const nextStep = pendingVerifyStep
+        setPendingVerifyStep(null)
+        onStepChange(nextStep)
+      } else {
+        onStepChange('processing')
+        setTimeout(() => {
+          onStepChange('success')
+          onSuccess(Number(amount), selectedContact)
+        }, 1800)
+      }
     }
   }
 
@@ -1055,8 +1064,8 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
             <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
               style={{ padding: '32px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, delay: 0.1 }}>
-                <div style={{ width: 90, height: 90, borderRadius: '50%', background: 'rgba(16,185,129,0.08)', border: '2px solid rgba(16,185,129,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                  <img src="/Payment Successful Animation.svg" alt="Payment Successful" style={{ width: 70, height: 70, objectFit: 'contain' }} />
+                <div style={{ width: 130, height: 130, borderRadius: '50%', background: 'rgba(16,185,129,0.08)', border: '2.5px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  <img src="/Payment Successful Animation.svg" alt="Payment Successful" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
                 </div>
               </motion.div>
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>

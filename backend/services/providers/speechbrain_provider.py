@@ -257,7 +257,7 @@ class SpeechBrainVoiceProvider(IVoiceVerificationProvider):
     No business logic changes required.
     """
 
-    SIMILARITY_THRESHOLD = 0.25   # Tuned: rejects siblings (0.03-0.10) while accepting enrolled user (0.30-0.45)
+    SIMILARITY_THRESHOLD = 0.26   # Tuned: slightly relaxed for webcam mic variability while still rejecting impostors
     MIN_AUDIO_DURATION_S = 0.5    # Minimum utterance length
 
     @property
