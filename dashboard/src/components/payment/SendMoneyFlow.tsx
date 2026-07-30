@@ -115,9 +115,8 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
     // Weighted distribution: blink, smile, nod, raise_eyebrows are MORE common
     // turn_left/turn_right are LESS common — variety keeps checks unpredictable
     const FACE_ACTIONS_WEIGHTED = [
-      'blink', 'blink', 'blink',          // 3x weight
       'smile', 'smile', 'smile',          // 3x weight
-      'nod', 'nod',                       // 2x weight
+      'nod', 'nod', 'nod',               // 3x weight
       'raise_eyebrows', 'raise_eyebrows', // 2x weight
       'turn_left',                        // 1x weight
       'turn_right',                       // 1x weight

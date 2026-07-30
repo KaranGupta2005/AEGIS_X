@@ -105,17 +105,11 @@ class FaceLivenessAction(str, Enum):
 
 
 FACE_LIVENESS_SEQUENCES = [
-    [FaceLivenessAction.BLINK, FaceLivenessAction.SMILE],
-    [FaceLivenessAction.SMILE, FaceLivenessAction.NOD],
-    [FaceLivenessAction.RAISE_EYEBROWS, FaceLivenessAction.BLINK],
-    [FaceLivenessAction.NOD, FaceLivenessAction.SMILE],
-    [FaceLivenessAction.BLINK, FaceLivenessAction.RAISE_EYEBROWS],
-    [FaceLivenessAction.SMILE, FaceLivenessAction.BLINK],
-    [FaceLivenessAction.RAISE_EYEBROWS, FaceLivenessAction.NOD],
-    [FaceLivenessAction.BLINK, FaceLivenessAction.NOD],
-    # Turn actions are less common — included for variety but not dominant
-    [FaceLivenessAction.TURN_LEFT, FaceLivenessAction.BLINK],
-    [FaceLivenessAction.SMILE, FaceLivenessAction.TURN_RIGHT],
+    [FaceLivenessAction.SMILE],
+    [FaceLivenessAction.NOD],
+    [FaceLivenessAction.RAISE_EYEBROWS],
+    [FaceLivenessAction.TURN_LEFT],
+    [FaceLivenessAction.TURN_RIGHT],
 ]
 
 
