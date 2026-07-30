@@ -65,20 +65,33 @@ class WebSocketRateLimiter:
 ws_rate_limiter = WebSocketRateLimiter()
 
 
-# Self-ping to prevent Render free tier sleep
+# Self-ping to keep instance warm and prevent cold starts
 async def keep_alive():
-    """Ping self every 10 minutes to prevent Render spin-down. Only runs in production."""
+    """Ping self every 5 minutes to keep Cloud Run / Render instances warm."""
     import os
-    url = os.getenv("RENDER_EXTERNAL_URL", "")
+    # Check for any known production URL
+    url = os.getenv("RENDER_EXTERNAL_URL", "") or os.getenv("AEGISX_SELF_URL", "")
     if not url:
-        return  # Skip in local development
+        # On Cloud Run, construct from K_SERVICE env var
+        k_service = os.getenv("K_SERVICE", "")
+        k_region = os.getenv("CLOUD_RUN_REGION", "us-central1")
+        project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "")
+        if k_service:
+            # Cloud Run sets PORT and K_SERVICE automatically
+            port = os.getenv("PORT", "8080")
+            url = f"http://localhost:{port}"
+        else:
+            return  # Skip in local development
     async with httpx.AsyncClient() as client:
         while True:
             try:
-                await client.get(f"{url}/")
+                await client.get(f"{url}/health", timeout=30.0)
             except Exception:
-                pass
-            await asyncio.sleep(600)
+                try:
+                    await client.get(f"{url}/", timeout=30.0)
+                except Exception:
+                    pass
+            await asyncio.sleep(300)  # Every 5 minutes
 
 
 @asynccontextmanager
