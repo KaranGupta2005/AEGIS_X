@@ -148,15 +148,14 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
 
     // HIGH-VALUE OVERRIDE: force verification for large amounts even at high trust
     if (txAmount > 100000) {
-      // ₹1L+ → always face verification with random actions
-      const actions = randomPair()
+      // ₹1L+ → always face verification with single random action
       setChallenge({
         challenge_id: `face_highval_${Date.now()}`,
         user_id: userId, session_id: 'sess_payment',
         verification_type: 'FACE_LIVENESS', risk_source: 'transaction_risk',
         status: 'PENDING', trust_before: currentTrust / 100, trust_after: 0,
         confidence: 0, latency_ms: 0, phrase: '',
-        liveness_actions: actions,
+        liveness_actions: [randomAction()],
         matched_delegate_id: '', reason: 'High-value transaction requires face verification',
         explanation: `₹${txAmount.toLocaleString()} requires face liveness check.`,
         created_at: new Date().toISOString(), completed_at: '',
@@ -358,7 +357,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
         verification_type: 'FACE_LIVENESS', risk_source: 'behavioral_drift',
         status: 'PENDING', trust_before: currentTrust / 100, trust_after: 0,
         confidence: 0, latency_ms: 0, phrase: '',
-        liveness_actions: ['blink', 'smile', 'turn_left'],
+        liveness_actions: [randomAction()],
         matched_delegate_id: '', reason: 'Full liveness required', explanation: '',
         created_at: new Date().toISOString(), completed_at: '',
       } as any)
