@@ -102,6 +102,38 @@ async def lifespan(app: FastAPI):
     set_processor(processor)
     print("[AEGIS-X] Trust engine ready.")
 
+    # === PRE-LOAD ALL ML MODELS AT STARTUP (no lazy loading on first request) ===
+    print("[AEGIS-X] Pre-loading ML models...")
+
+    # 1. Sentence-transformers (embedding service) — already loaded by EventProcessor
+    print("[AEGIS-X] ✓ Embedding model (all-MiniLM-L6-v2) loaded.")
+
+    # 2. SpeechBrain ECAPA-TDNN
+    try:
+        from backend.services.providers.speechbrain_provider import _load_speechbrain
+        _load_speechbrain()
+        print("[AEGIS-X] ✓ SpeechBrain ECAPA-TDNN pre-loaded.")
+    except Exception as e:
+        print(f"[AEGIS-X] ✗ SpeechBrain pre-load failed: {e}")
+
+    # 3. InsightFace buffalo_l
+    try:
+        from backend.services.providers.insightface_provider import _load_insightface
+        _load_insightface()
+        print("[AEGIS-X] ✓ InsightFace buffalo_l pre-loaded.")
+    except Exception as e:
+        print(f"[AEGIS-X] ✗ InsightFace pre-load failed: {e}")
+
+    # 4. MediaPipe (liveness)
+    try:
+        from backend.services.providers.mediapipe_provider import _load_mediapipe
+        _load_mediapipe()
+        print("[AEGIS-X] ✓ MediaPipe FaceMesh pre-loaded.")
+    except Exception as e:
+        print(f"[AEGIS-X] ✗ MediaPipe pre-load failed: {e}")
+
+    print("[AEGIS-X] All models pre-loaded into memory.")
+
     # Log provider status at startup
     from backend.api.verification_routes import get_engine
     try:

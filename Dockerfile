@@ -21,6 +21,12 @@ RUN python scripts/generate_cognitive_dataset_v2.py && \
     python scripts/train_anomaly_model.py && \
     python scripts/download_models.py
 
+# Pre-download InsightFace buffalo_l model so it doesn't download at runtime (causes OOM)
+RUN python -c "import insightface; from insightface.app import FaceAnalysis; app = FaceAnalysis(name='buffalo_l', root='models/insightface', providers=['CPUExecutionProvider']); app.prepare(ctx_id=0, det_size=(640, 640)); print('[BUILD] InsightFace buffalo_l pre-loaded successfully')"
+
+# Pre-download sentence-transformers model
+RUN python -c "from sentence_transformers import SentenceTransformer; model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu'); print('[BUILD] Sentence-transformers model cached')"
+
 # Expose port
 ENV PORT=8080
 EXPOSE 8080
