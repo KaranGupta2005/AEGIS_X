@@ -12,7 +12,7 @@
 import React, { useReducer, useRef, useCallback, useEffect } from 'react'
 import { StoreContext, initialState, reducer, Action } from './store'
 import { createWebSocket, createSimulator, SimulatorScenario, TrustUpdate } from './api'
-import { aegisSDK, windowToBackendEvent, BehaviorWindow } from './sdk/AegisBehavioralSDK'
+import { aegisSDK, windowToBackendEvent, BehaviorWindow, setVerificationFailureInjector } from './sdk/AegisBehavioralSDK'
 
 const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
 const WS_HOST = import.meta.env.VITE_BACKEND_URL
@@ -59,6 +59,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       dispatch({ type: 'SET_CONNECTED', payload: true })
       dispatch({ type: 'SET_SESSION', payload: { userId, sessionId } })
       dispatch({ type: 'SDK_STATE_CHANGE', payload: { sdkState: 'OBSERVING', currentScreen: 'home' } })
+
+      // Wire verification failure injector — lets SendMoneyFlow push
+      // stressed events through the live trust pipeline on biometric failure
+      setVerificationFailureInjector((event, txAmount = 0) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'behavioral_event',
+            event,
+            transaction_amount: txAmount,
+            is_new_beneficiary: false,
+            sdk_context: { sdk_state: 'VERIFYING', current_screen: 'pin' },
+          }))
+        }
+      })
 
       // Wire window callback: aggregate → transmit (with buffer for reconnect)
       const windowBuffer: BehaviorWindow[] = []
@@ -160,6 +174,43 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       sdkInitializedRef.current = false
     }
   }, [])
+
+  // ── HONEYPOT WATCH: disconnect WS when honeypot triggers, reconnect after 30s ──
+  const honeypotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (state.honeypotTriggered && continuousWsRef.current) {
+      // Close the WebSocket — backend appears "offline" to the attacker
+      continuousWsRef.current.close()
+      dispatch({ type: 'SET_CONNECTED', payload: false })
+
+      // Reconnect after 30 seconds (suitable condition = time passed)
+      if (honeypotTimerRef.current) clearTimeout(honeypotTimerRef.current)
+      honeypotTimerRef.current = setTimeout(() => {
+        const session = continuousSessionRef.current
+        if (!session) return
+        try {
+          const newWs = new WebSocket(`${WS_BASE}/ws/${session.userId}?session_id=${session.sessionId}`)
+          continuousWsRef.current = newWs
+          newWs.onopen = () => {
+            dispatch({ type: 'SET_CONNECTED', payload: true })
+            dispatch({ type: 'HONEYPOT_RESET' })
+          }
+          newWs.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data)
+              if (data.type === 'trust_update' || data.trust_score !== undefined) {
+                dispatch({ type: 'TRUST_UPDATE', payload: data as TrustUpdate })
+              }
+            } catch { /* ignore */ }
+          }
+          newWs.onclose = () => { dispatch({ type: 'SET_CONNECTED', payload: false }) }
+        } catch { /* give up */ }
+      }, 30000)
+    }
+    return () => {
+      if (honeypotTimerRef.current) clearTimeout(honeypotTimerRef.current)
+    }
+  }, [state.honeypotTriggered])
 
   // ── SIMULATOR SCENARIO (for demo/testing mode) ───────────────────────────
 

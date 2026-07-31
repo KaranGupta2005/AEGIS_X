@@ -132,6 +132,8 @@ export const AegisConsole: React.FC<AegisConsoleProps> = ({ state, currentPage }
     ? `${sessionMin}m ${sessionSec % 60}s`
     : `${sessionSec}s`
 
+  const { honeypotTriggered, isConnected: wsConnected } = state
+
   return (
     <div style={{
       background: '#0f1d32',
@@ -142,7 +144,41 @@ export const AegisConsole: React.FC<AegisConsoleProps> = ({ state, currentPage }
       overflow: 'hidden',
       height: '100%',
     }}>
-      {/* Header */}
+
+      {/* ─── HONEYPOT ALERT BANNER ─── */}
+      {honeypotTriggered && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{
+            background: 'rgba(239,68,68,0.12)',
+            border: '1px solid rgba(239,68,68,0.35)',
+            borderRadius: '12px 12px 0 0',
+            padding: '8px 14px',
+            display: 'flex', alignItems: 'center', gap: 8,
+            flexShrink: 0,
+          }}
+        >
+          <motion.div
+            animate={{ opacity: [1, 0.3, 1] }}
+            transition={{ duration: 1, repeat: Infinity }}
+            style={{ width: 7, height: 7, borderRadius: '50%', background: '#EF4444', flexShrink: 0 }}
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 9, fontWeight: 800, color: '#EF4444', fontFamily: 'Space Grotesk', letterSpacing: '0.05em' }}>
+              ⚠ HONEYPOT TRIGGERED — ATTACKER CONTAINED
+            </div>
+            <div style={{ fontSize: 7.5, color: '#f87171', fontFamily: 'JetBrains Mono', marginTop: 1 }}>
+              {!wsConnected
+                ? 'Backend offline — connection severed. Resuming in ~30s...'
+                : 'Sandbox active · Fake responses served · No real money at risk'}
+            </div>
+          </div>
+          <div style={{ fontSize: 7, color: 'rgba(239,68,68,0.6)', fontFamily: 'JetBrains Mono', textAlign: 'right', flexShrink: 0 }}>
+            {!wsConnected ? 'OFFLINE' : 'SANDBOX'}
+          </div>
+        </motion.div>
+      )}
       <div style={{
         padding: '10px 14px',
         borderBottom: '1px solid var(--border-light)',

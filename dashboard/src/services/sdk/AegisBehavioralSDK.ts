@@ -791,3 +791,12 @@ export function windowToBackendEvent(w: BehaviorWindow): Record<string, number |
 // ─── SINGLETON EXPORT ─────────────────────────────────────────────────────────
 
 export const aegisSDK = new AegisBehavioralSDK()
+
+// ─── GLOBAL VERIFICATION FAILURE INJECTOR ────────────────────────────────────
+// StoreProvider sets this after WebSocket opens, so verification failures
+// can push a stressed behavioral event through the live trust pipeline.
+export let _injectVerificationFailureEvent: ((event: Record<string, any>, txAmount?: number) => void) | null = null
+
+export function setVerificationFailureInjector(fn: (event: Record<string, any>, txAmount?: number) => void) {
+  _injectVerificationFailureEvent = fn
+}

@@ -33,23 +33,68 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
   const steps = ['contacts', 'amount', 'review', 'pin', 'processing', 'success']
   const stepIndex = steps.indexOf(currentStep)
 
+  // ─── FAILURE COUNTER (persisted in sessionStorage — survives navigation) ─
+  const FAILURE_KEY = `aegisx_verify_failures_${userId}`
+  const getFailureCount = () => parseInt(sessionStorage.getItem(FAILURE_KEY) || '0')
+  const incFailureCount = () => {
+    const n = getFailureCount() + 1
+    sessionStorage.setItem(FAILURE_KEY, String(n))
+    return n
+  }
+
   // ─── TRUST PENALTY REPORTER ─────────────────────────────────────────────
-  // Reports verification failures to backend → reduces trust score
-  // This ensures failed verification is treated as a risk signal
   const reportVerificationFailure = async (
     failureType: 'voice_mismatch' | 'face_mismatch' | 'camera_denied' | 'mic_denied' |
                  'no_speech' | 'liveness_failed' | 'replay_detected' | 'timeout' | 'no_enrollment',
     severity: 'low' | 'medium' | 'high' | 'critical' = 'medium'
   ) => {
-    const penaltyMap = { low: 8, medium: 15, high: 25, critical: 35 }
-    const penalty = penaltyMap[severity]
-    const newTrust = Math.max(10, trustScore - penalty)
-    const cogStateMap = {
+    const newFailureCount = incFailureCount()
+
+    // Compounding penalty: each failure hits harder
+    const basePenalty = { low: 8, medium: 15, high: 22, critical: 32 }[severity]
+    const compoundMultiplier = 1 + (newFailureCount - 1) * 0.5  // +50% per extra failure
+    const penalty = Math.round(basePenalty * compoundMultiplier)
+    // Use live trust from store (most current value), floor at 8%
+    const currentTrust = trustScore
+    const newTrust = Math.max(8, currentTrust - penalty)
+
+    const cogStateMap: Record<string, string> = {
       voice_mismatch: 'distressed', face_mismatch: 'distressed',
       camera_denied: 'distressed', mic_denied: 'distressed',
       no_speech: 'focused', liveness_failed: 'distressed',
       replay_detected: 'robotic', timeout: 'panicked', no_enrollment: 'focused',
     }
+    const cogState = newFailureCount >= 3 ? 'panicked' :
+                     newFailureCount >= 2 ? 'distressed' :
+                     cogStateMap[failureType] || 'distressed'
+
+    // 1. Inject a stressed behavioral event → updates AEGIS console trust score
+    try {
+      const { _injectVerificationFailureEvent } = await import('../../services/sdk/AegisBehavioralSDK')
+      if (_injectVerificationFailureEvent) {
+        const stressedEvent = {
+          typing_speed_cps: Math.max(0.3, 1.2 - newFailureCount * 0.3),
+          typing_rhythm_variance: 180 + newFailureCount * 40,
+          typing_pressure_mean: 0.75,
+          swipe_velocity_mean: 0.2,
+          swipe_velocity_variance: 0.45,
+          swipe_straightness: 0.35,
+          touch_duration_mean: 380 + newFailureCount * 60,
+          touch_duration_variance: 3200,
+          touch_area_mean: 0.62,
+          hesitation_ratio: Math.min(0.95, 0.55 + newFailureCount * 0.15),
+          hesitation_count: 8 + newFailureCount * 3,
+          correction_rate: Math.min(0.9, 0.4 + newFailureCount * 0.15),
+          scroll_speed_mean: 0.04,
+          gyroscope_variance: 0.08 + newFailureCount * 0.02,
+          session_time_elapsed: 240,
+          interaction_intensity: Math.max(1, 3 - newFailureCount),
+        }
+        _injectVerificationFailureEvent(stressedEvent, Number(amount))
+      }
+    } catch {}
+
+    // 2. Also notify security evaluate endpoint
     try {
       const BACKEND = import.meta.env.VITE_BACKEND_URL || ''
       await fetch(`${BACKEND}/api/v1/security/evaluate`, {
@@ -59,19 +104,21 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
           user_id: userId,
           session_id: 'sess_payment',
           trust_score: newTrust / 100,
-          cognitive_state: cogStateMap[failureType] || 'distressed',
-          drift_detected: severity === 'high' || severity === 'critical',
-          drift_severity: severity === 'critical' ? 'critical' : severity === 'high' ? 'high' : 'medium',
-          velocity: -0.03,
-          anomaly_score: severity === 'critical' ? 0.9 : severity === 'high' ? 0.7 : 0.4,
+          cognitive_state: cogState,
+          drift_detected: severity === 'high' || severity === 'critical' || newFailureCount >= 2,
+          drift_severity: newFailureCount >= 3 ? 'critical' : newFailureCount >= 2 ? 'high' : severity === 'critical' ? 'critical' : severity === 'high' ? 'high' : 'medium',
+          velocity: -(0.03 + newFailureCount * 0.02),
+          anomaly_score: Math.min(0.95, 0.3 + newFailureCount * 0.2),
           verification_failure: failureType,
-          failure_severity: severity,
+          failure_count: newFailureCount,
         }),
       })
     } catch { /* non-critical */ }
 
-    // Also block if multiple failures have reduced trust below threshold
-    if (newTrust < 40) {
+    // 3. Block after 3 failures or if trust critically low
+    if (newTrust < 40 || newFailureCount >= 3) {
+      // Clear failure counter on block (fresh slate if user recovers)
+      sessionStorage.removeItem(FAILURE_KEY)
       onBlock()
     }
   }
@@ -661,7 +708,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
   const [faceStream, setFaceStream] = useState<MediaStream | null>(null)
   const faceVideoRef = React.useRef<HTMLVideoElement>(null)
 
-  const handlePinDigit = (d: string) => {
+  const handlePinDigit = async (d: string) => {
     if (pin.length >= PIN_LENGTH) return
     const newPin = pin + d
     setPin(newPin)
@@ -685,7 +732,35 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
         }
         
         setTimeout(() => { setPin(''); setPinError(false) }, 1200)
-        // Report failed PIN attempt to backend — this reduces trust
+
+        // Inject stressed behavioral event → trust drops on AEGIS console
+        try {
+          const { _injectVerificationFailureEvent } = await import('../../services/sdk/AegisBehavioralSDK')
+          if (_injectVerificationFailureEvent) {
+            _injectVerificationFailureEvent({
+              typing_speed_cps: Math.max(0.4, 1.5 - attempts * 0.4),
+              typing_rhythm_variance: 160 + attempts * 50,
+              typing_pressure_mean: 0.72,
+              swipe_velocity_mean: 0.22,
+              swipe_velocity_variance: 0.42,
+              swipe_straightness: 0.38,
+              touch_duration_mean: 360 + attempts * 70,
+              touch_duration_variance: 3000,
+              touch_area_mean: 0.60,
+              hesitation_ratio: Math.min(0.90, 0.50 + attempts * 0.18),
+              hesitation_count: 7 + attempts * 3,
+              correction_rate: Math.min(0.85, 0.38 + attempts * 0.18),
+              scroll_speed_mean: 0.04,
+              gyroscope_variance: 0.07 + attempts * 0.025,
+              session_time_elapsed: 220,
+              interaction_intensity: Math.max(1, 4 - attempts),
+            }, Number(amount))
+          }
+        } catch {}
+        // Also count PIN failure towards the global failure counter
+        incFailureCount()
+
+        // Report to security evaluate
         try {
           const BACKEND = import.meta.env.VITE_BACKEND_URL || ''
           fetch(`${BACKEND}/api/v1/security/evaluate`, {
@@ -700,6 +775,8 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
               drift_severity: attempts >= 2 ? 'high' : 'medium',
               velocity: -0.05 * attempts,
               anomaly_score: 0.3 + attempts * 0.2,
+              verification_failure: 'wrong_pin',
+              failure_count: attempts,
             }),
           }).catch(() => {})
         } catch {}

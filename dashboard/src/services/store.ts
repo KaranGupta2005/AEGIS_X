@@ -79,6 +79,7 @@ export interface SessionState {
   securityState: string
   sandboxActive: boolean
   threatScore: number
+  honeypotTriggered: boolean   // true when backend detects honeypot/sandbox condition
 }
 
 const initialState: SessionState = {
@@ -130,6 +131,7 @@ const initialState: SessionState = {
   securityState: 'NORMAL',
   sandboxActive: false,
   threatScore: 0,
+  honeypotTriggered: false,
 }
 
 type Action =
@@ -140,7 +142,11 @@ type Action =
   | { type: 'TRUST_UPDATE_SIMULATED'; payload: TrustUpdate }
   | { type: 'SDK_STATE_CHANGE'; payload: { sdkState: SDKState; currentScreen: AppScreen } }
   | { type: 'LIVE_ACTIVITY_UPDATE'; payload: Partial<LiveSessionActivity> }
+  | { type: 'HONEYPOT_TRIGGERED' }
+  | { type: 'HONEYPOT_RESET' }
   | { type: 'RESET' }
+
+export type { Action }
 
 function reducer(state: SessionState, action: Action): SessionState {
   switch (action.type) {
@@ -166,6 +172,10 @@ function reducer(state: SessionState, action: Action): SessionState {
           currentActivity: _describeActivity(action.payload.sdkState, action.payload.currentScreen),
         },
       }
+    case 'HONEYPOT_TRIGGERED':
+      return { ...state, honeypotTriggered: true }
+    case 'HONEYPOT_RESET':
+      return { ...state, honeypotTriggered: false, sandboxActive: false }
     case 'LIVE_ACTIVITY_UPDATE':
       return {
         ...state,
@@ -209,10 +219,12 @@ function reducer(state: SessionState, action: Action): SessionState {
         cognitiveState: d.cognitive_state ?? state.cognitiveState,
         driftDetected: d.drift_detected ?? state.driftDetected,
         velocity: d.temporal?.velocity ?? state.velocity,
-        // Security state ALWAYS updated (needed for containment overlay)
+        // Security state ALWAYS updated
         securityState: d.security?.security_state ?? state.securityState,
         sandboxActive: d.security?.sandbox_active ?? state.sandboxActive,
         threatScore: d.security?.threat_score ?? state.threatScore,
+        // Auto-trigger honeypot when sandbox activates
+        honeypotTriggered: (d.security?.sandbox_active && !state.sandboxActive) ? true : state.honeypotTriggered,
         // Timeline and alerts
         alerts: [...state.alerts, ...newAlerts].slice(-50),
         timeline: [...state.timeline, newEntry].slice(-100),
@@ -280,6 +292,7 @@ function reducer(state: SessionState, action: Action): SessionState {
         securityState: d.security?.security_state ?? state.securityState,
         sandboxActive: d.security?.sandbox_active ?? state.sandboxActive,
         threatScore: d.security?.threat_score ?? state.threatScore,
+        honeypotTriggered: (d.security?.sandbox_active && !state.sandboxActive) ? true : state.honeypotTriggered,
         liveActivity: {
           ...state.liveActivity,
           collectedWindows: newWindowCount,

@@ -41,11 +41,9 @@ export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, co
   const securityState = storeState.securityState
   const threatScore = storeState.threatScore
 
-  // Auto-show block overlay ONLY when trust is critically low AND decision is BLOCK
-  // With V2 tuning, trust drops faster so lower threshold from 60→50 for block
-  // The sandbox overlay handles trust<=50, block overlay is for explicit BLOCK+payment
+  // Auto-show block overlay when trust is critically low AND decision is BLOCK
   useEffect(() => {
-    if (decision === 'BLOCK' && trustScore < 50 && screen === 'send') {
+    if (decision === 'BLOCK' && trustScore < 50) {
       setBlocked(true)
     }
   }, [decision, trustScore])
@@ -221,71 +219,7 @@ export const BankingApp: React.FC<BankingAppProps> = ({ trustScore, decision, co
       {/* Note: Step-Up verification (voice/face challenges) is now handled
           inline within SendMoneyFlow — no overlay needed */}
 
-      {/* SANDBOX CONTAINMENT OVERLAY — Shown when honeypot/containment activates OR trust critically low */}
-      <AnimatePresence>
-        {(sandboxActive || trustScore <= 50 || decision === 'BLOCK') && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.6 }}
-            style={{
-              position: 'absolute', inset: 0, zIndex: 200,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(10, 15, 28, 0.92)',
-              backdropFilter: 'blur(12px)',
-              borderRadius: 16,
-            }}
-          >
-            {/* Pulsing SVG loader */}
-            <motion.div
-              animate={{ scale: [1, 1.05, 1], opacity: [0.9, 1, 0.9] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ width: 140, height: 140, marginBottom: 20 }}
-            >
-              <img
-                src="/Id authentication.svg"
-                alt="Identity Verification"
-                style={{ width: '100%', height: '100%', filter: 'drop-shadow(0 0 20px rgba(59,130,246,0.4))' }}
-              />
-            </motion.div>
-
-            {/* Status text */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              style={{ textAlign: 'center', maxWidth: 260, padding: '0 20px' }}
-            >
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#60a5fa', fontFamily: 'Space Grotesk', marginBottom: 6 }}>
-                Identity Verification Active
-              </div>
-              <div style={{ fontSize: 10, color: '#5b8cc7', fontFamily: 'Space Grotesk', lineHeight: 1.6, marginBottom: 12 }}>
-                Suspicious activity detected. Your session is under enhanced security review.
-              </div>
-
-              {/* Scanning animation bars */}
-              <div style={{ display: 'flex', gap: 3, justifyContent: 'center', marginBottom: 14 }}>
-                {[0, 0.2, 0.4, 0.6, 0.8].map((delay, i) => (
-                  <motion.div
-                    key={i}
-                    animate={{ height: [8, 20, 8], opacity: [0.4, 1, 0.4] }}
-                    transition={{ duration: 1.2, repeat: Infinity, delay }}
-                    style={{ width: 3, borderRadius: 2, background: '#3b82f6' }}
-                  />
-                ))}
-              </div>
-
-              <div style={{ fontSize: 8, color: 'rgba(96,165,250,0.6)', fontFamily: 'JetBrains Mono' }}>
-                AEGIS-X CONTAINMENT · SANDBOX MODE · T(t)={trustScore.toFixed(0)}%
-              </div>
-              <div style={{ fontSize: 7, color: 'rgba(96,165,250,0.4)', fontFamily: 'JetBrains Mono', marginTop: 4 }}>
-                Threat Score: {(threatScore * 100).toFixed(0)}% · State: {securityState}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* SANDBOX CONTAINMENT OVERLAY — removed. Replaced by honeypot alert in AEGIS console */}
     </div>
   )
 }
