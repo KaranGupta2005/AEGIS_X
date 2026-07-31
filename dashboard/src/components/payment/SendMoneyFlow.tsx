@@ -115,11 +115,10 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
     // Weighted distribution: blink, smile, nod, raise_eyebrows are MORE common
     // turn_left/turn_right are LESS common — variety keeps checks unpredictable
     const FACE_ACTIONS_WEIGHTED = [
-      'smile', 'smile', 'smile',          // 3x weight
-      'nod', 'nod', 'nod',               // 3x weight
-      'raise_eyebrows', 'raise_eyebrows', // 2x weight
-      'turn_left',                        // 1x weight
-      'turn_right',                       // 1x weight
+      'smile', 'smile', 'smile',   // 3x weight
+      'nod', 'nod', 'nod',         // 3x weight
+      'turn_left',                  // 1x weight
+      'turn_right',                 // 1x weight
     ]
     const randomAction = () => FACE_ACTIONS_WEIGHTED[Math.floor(Math.random() * FACE_ACTIONS_WEIGHTED.length)]
     const randomPair = () => {
@@ -566,7 +565,7 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               image_base64: frameBase64,
-              required_actions: challenge.liveness_actions,
+              required_actions: [challenge.liveness_actions[0]], // always single action
             }),
           })
           const livenessResult = await livenessRes.json()
@@ -976,11 +975,9 @@ export const SendMoneyFlow: React.FC<SendMoneyFlowProps> = ({
               </p>
               {challenge?.liveness_actions && challenge.liveness_actions.length > 0 && (
                 <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                  {challenge.liveness_actions.map((action, i) => (
-                    <div key={i} style={{ padding: '5px 10px', borderRadius: 6, background: faceStream ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.06)', border: `1px solid ${faceStream ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.2)'}`, fontSize: 9, color: faceStream ? '#10B981' : '#F87171', fontFamily: 'JetBrains Mono', textTransform: 'capitalize', fontWeight: 700 }}>
-                      {action.replace('_', ' ')}
-                    </div>
-                  ))}
+                  <div style={{ padding: '5px 14px', borderRadius: 6, background: faceStream ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.06)', border: `1px solid ${faceStream ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.2)'}`, fontSize: 9, color: faceStream ? '#10B981' : '#F87171', fontFamily: 'JetBrains Mono', textTransform: 'capitalize', fontWeight: 700 }}>
+                    {challenge.liveness_actions[0].replace('_', ' ')}
+                  </div>
                 </div>
               )}
               {verificationResult ? (

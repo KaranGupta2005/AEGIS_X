@@ -107,7 +107,6 @@ class FaceLivenessAction(str, Enum):
 FACE_LIVENESS_SEQUENCES = [
     [FaceLivenessAction.SMILE],
     [FaceLivenessAction.NOD],
-    [FaceLivenessAction.RAISE_EYEBROWS],
     [FaceLivenessAction.TURN_LEFT],
     [FaceLivenessAction.TURN_RIGHT],
 ]
